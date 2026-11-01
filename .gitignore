@@ -1,0 +1,4 @@
+*expenses-backup*.json
+.playwright-mcp/
+.superpowers/
+node_modules/

@@ -1,0 +1,98 @@
+{
+  "defaultAccounts": [
+    {
+      "name": "Bank",
+      "type": "asset",
+      "colour": "#4f8df7",
+      "icon": "🏦"
+    }
+  ],
+  "categories": [
+    {
+      "id": "Food",
+      "icon": "🍚"
+    },
+    {
+      "id": "Tea/Coffee",
+      "icon": "🧋"
+    },
+    {
+      "id": "Transport",
+      "icon": "🚌"
+    },
+    {
+      "id": "Groceries",
+      "icon": "🛒"
+    },
+    {
+      "id": "Shopping",
+      "icon": "👜"
+    },
+    {
+      "id": "Entertainment",
+      "icon": "🎬"
+    },
+    {
+      "id": "School",
+      "icon": "🎓"
+    },
+    {
+      "id": "Bills",
+      "icon": "🧾"
+    },
+    {
+      "id": "Others",
+      "icon": "💸"
+    }
+  ],
+  "incomeCategories": [
+    {
+      "id": "Salary",
+      "icon": "💼"
+    },
+    {
+      "id": "Allowance",
+      "icon": "🧧"
+    },
+    {
+      "id": "Pay back",
+      "icon": "🔁"
+    },
+    {
+      "id": "Others",
+      "icon": "➕"
+    }
+  ],
+  "tags": [
+    "treat",
+    "with friends",
+    "family"
+  ],
+  "suggestedAccounts": [
+    {
+      "name": "Cash",
+      "type": "asset",
+      "colour": "#2e9e5b",
+      "icon": "💵"
+    },
+    {
+      "name": "PayNow/PayLah",
+      "type": "asset",
+      "colour": "#ff4d8d",
+      "icon": "📱"
+    },
+    {
+      "name": "GrabPay",
+      "type": "asset",
+      "colour": "#00b14f",
+      "icon": "🟢"
+    },
+    {
+      "name": "Credit card",
+      "type": "credit",
+      "colour": "#a78bfa",
+      "icon": "💳",
+      "limit": 0
+    }
+  ]
+}

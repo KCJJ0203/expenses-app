@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Expenses</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="theme-color" content="#0c0d10">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<style>
+  #billdlg .fld{display:flex;flex-direction:column;gap:5px}#billdlg .fld label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}#billdlg .frow{display:grid;gap:9px}#billdlg .fake{border:1px solid var(--line);border-radius:9px;background:var(--surf);padding:9px 11px;color:var(--text);font-size:14px}
+  /* self-hosted fonts (offline-exact, no CDN) */
+  /* self-hosted fonts (offline-exact, no CDN) */
+  @font-face{font-family:'Chakra Petch';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/chakrapetch-400.woff2) format('woff2')}
+  @font-face{font-family:'Chakra Petch';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/chakrapetch-500.woff2) format('woff2')}
+  @font-face{font-family:'Chakra Petch';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/chakrapetch-600.woff2) format('woff2')}
+  @font-face{font-family:'Chakra Petch';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/chakrapetch-700.woff2) format('woff2')}
+  @font-face{font-family:'Rubik';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/rubik-400.woff2) format('woff2')}
+  @font-face{font-family:'Rubik';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/rubik-500.woff2) format('woff2')}
+  @font-face{font-family:'Rubik';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/rubik-600.woff2) format('woff2')}
+  @font-face{font-family:'Space Mono';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/spacemono-400.woff2) format('woff2')}
+  @font-face{font-family:'Space Mono';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/spacemono-700.woff2) format('woff2')}
+  :root{
+    --bg:#0c0d10; --bg2:#101218; --surf:#181a22; --surf2:#1f222c; --line:#24262f; --line2:#313442;
+    --text:#e8e8ea; --muted:#8b8e9e; --faint:#7e8296;
+    --primary:#00ffff; --accent:#00ffff; --warn:#ff9f45; --red:#ff5d52; --green:#43e0a0; --teal:#43e0a0;
+    --disp:'Chakra Petch',ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif;
+    --body:'Rubik',ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif;
+    --mono:'Space Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;line-height:1.5}
+  body{overflow-wrap:anywhere}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 18px}
+  body{padding-bottom:env(safe-area-inset-bottom,0px)}
+  main{padding:22px 0 60px}
+  .h2{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:9px;margin:2px 4px 12px}
+  .card{position:relative;background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px 13px 11px 15px;margin-bottom:10px;cursor:grab;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ac,var(--accent))}
+  .card:hover{border-color:var(--line2)}
+  .chip{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;color:#0b0b12;letter-spacing:.04em}
+  .mini{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+  .mini:hover{color:var(--text);border-color:var(--line2)}
+  .empty{color:var(--faint);text-align:center;padding:26px 10px;font-size:12px;font-family:var(--mono);letter-spacing:.06em}
+  .dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:4px}
+  .dow span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--faint);text-align:center;text-transform:uppercase}
+  .month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+  .cell{background:var(--surf);border:1px solid var(--line);border-radius:9px;min-height:104px;padding:7px 7px 5px;cursor:pointer;overflow:hidden;transition:border-color .12s}
+  .cell:hover{border-color:var(--line2)}
+  .cell.out{background:var(--bg2);opacity:.55}
+  .cell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .cell .dn{font-family:var(--disp);font-weight:600;font-size:12px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center}
+  .cell.today .dn{color:var(--accent)}
+  .cell.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .frow{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+  .frow:first-of-type{border-top:none}
+  dialog{background:var(--surf);color:var(--text);border:1px solid var(--line2);border-radius:16px;padding:20px;width:min(430px,93vw);overflow:visible}
+  dialog::backdrop{background:rgba(6,7,10,.7);backdrop-filter:blur(2px)}
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);background:var(--surf);color:var(--text);border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:10px;padding:9px 15px;font-family:var(--mono);font-size:12px;letter-spacing:.05em;box-shadow:0 6px 24px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:9999}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #undobar{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);display:flex;align-items:center;gap:14px;width:min(calc(100vw - 24px),440px);box-sizing:border-box;background:var(--surf);color:var(--text);border:1px solid var(--line2);border-left:3px solid var(--red);border-radius:10px;padding:6px 6px 6px 15px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;box-shadow:0 6px 24px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:10000}
+  #undobar.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  #undobar .umsg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  dialog h3{font-family:var(--mono);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;font-size:14px}
+  input,select{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line2);background:var(--bg2);color:var(--text);font-family:var(--body);font-size:14px}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
+  .macts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+  .btn{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:9px 15px;border-radius:9px;border:1px solid var(--accent);
+    background:var(--accent);color:#0c0d10;cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.ghost{background:var(--surf);color:var(--muted);border-color:var(--line)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--line2)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  main{padding:14px 0 60px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 4px}
+  .topbar .brand{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:.08em;display:flex;align-items:center;gap:9px}
+  .topbar .brand .mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#00ffff,#43e0a0);display:inline-block}
+  /* Expenses tab (scoped to #exp) */
+  /* net worth + balances */
+  #exp .netrow{display:grid;grid-template-columns:1.15fr 2fr;gap:14px;margin-bottom:22px}
+  @media(max-width:820px){#exp .netrow{grid-template-columns:1fr}}
+  #exp .card{background:linear-gradient(180deg,var(--surf),var(--bg2));border:1px solid var(--line);border-radius:14px}
+  #exp .net{padding:18px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;position:relative;overflow:hidden}
+  #exp .net .ey{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+  #exp .net .big{font-family:var(--disp);font-weight:800;font-size:38px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  #exp .net .mstats{display:flex;gap:8px;margin-top:14px;position:relative;z-index:1}
+  #exp .net .ms{flex:1;background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:9px 11px;display:flex;flex-direction:column;gap:5px}
+  #exp .net .msl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+  #exp .net .msv{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  #exp .net .msv.out{color:var(--red)} #exp .net .msv.in{color:var(--green)}
+  #exp .net .spark{position:absolute;right:0;bottom:0;left:0;height:40px;opacity:.35}
+
+  #exp .accts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:560px){#exp .accts{grid-template-columns:repeat(2,1fr)}}
+  #exp .acct{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;gap:7px;position:relative}
+  #exp .acct .an{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  #exp .acct .ic{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#06121a;font-family:var(--disp)}
+  #exp .acct .bal{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  #exp .acct .meta{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:var(--faint);text-transform:uppercase}
+  #exp .acct.low{border-color:rgba(255,159,69,.45)}
+  #exp .acct.low .bal{color:var(--warn)}
+  #exp .acct.low .meta{color:var(--warn)}
+  /* credit / BNPL liabilities */
+  #exp .creditsec{padding:14px 16px 16px;margin-bottom:22px}
+  #exp .creditHead{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  #exp .creditHead .owe{margin-left:auto;color:var(--red);letter-spacing:.04em}
+  #exp .acct.credit .bal.owe{color:var(--red)}
+  #exp .acct .vgain{color:var(--green)} #exp .acct .vloss{color:var(--red)}
+  #exp .acct .vasof.stale{color:var(--faint)}
+  #exp .acct .meta.vmeta{display:block;line-height:1.55} #exp .acct .meta.vmeta span{display:inline}
+  #exp .acct.credit .cnote{font-family:var(--mono);font-size:9px;letter-spacing:.03em;color:var(--faint);margin-top:-2px;line-height:1.35}
+  #exp .acct.credit .limitbar{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:2px}
+  #exp .acct.credit .limitbar i{display:block;height:100%;border-radius:3px;background:var(--red)}
+  /* Owed to me */
+  #exp .owedsec{padding:15px 16px 14px;margin-bottom:22px}
+  #exp .owedhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+  #exp .owedhead .oh{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--faint)}
+  #exp .owedhead .obig{font-family:var(--disp);font-weight:800;font-size:24px;letter-spacing:-.01em;color:var(--red);font-variant-numeric:tabular-nums}
+  #exp .owedrows{display:flex;flex-direction:column;gap:8px}
+  #exp .orow{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surf2);cursor:pointer;transition:border-color .12s}
+  #exp .orow:hover{border-color:var(--line2)}
+  #exp .oav{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-weight:700;font-size:12.5px;color:#0b0c0f;flex-shrink:0;font-family:var(--disp)}
+  #exp .omid{flex:1;min-width:0}
+  #exp .onm{font-weight:600;font-size:13.5px}
+  #exp .ometa{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);margin-top:3px;display:flex;gap:7px;flex-wrap:wrap}
+  #exp .ometa .opart{color:var(--warn)}
+  #exp .oamt{font-family:var(--disp);font-weight:700;font-size:15px;color:var(--red);font-variant-numeric:tabular-nums;white-space:nowrap}
+  #exp .odetail{padding:2px 4px 6px 45px}
+  #exp .odrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-family:var(--mono);font-size:10px;letter-spacing:.03em;color:var(--muted);border-bottom:1px solid var(--line)}
+  #exp .odrow:last-child{border-bottom:none}
+  #exp .odrow .odr{display:flex;align-items:center;gap:9px}
+  #exp .odx{background:none;border:none;color:var(--faint);font-size:15px;line-height:1;cursor:pointer;padding:0 3px;border-radius:5px}
+  #exp .odx:hover{color:var(--red)}
+  #exp .oempty{color:var(--faint);font-size:12px;padding:6px 2px 4px;line-height:1.5}
+  #exp .owedadd{margin-top:12px}
+  /* split form */
+  #exp .splitbox{margin-top:12px;padding-top:13px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+  #exp .sfrow{display:flex;gap:10px}
+  #exp .sf{flex:1;display:flex;flex-direction:column;gap:7px}
+  #exp .sf.sfsm{max-width:130px}
+  #exp .sf > label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  #exp .sf input,#exp .spadd{background:var(--surf2);border:1px solid var(--line);border-radius:9px;color:var(--text);font-family:var(--body);font-size:14px;padding:9px 11px;width:100%}
+  #exp .sf input:focus,#exp .spadd:focus{outline:none;border-color:var(--accent)}
+  #exp .spadd{margin-top:8px;font-size:12.5px}
+  #exp .spchips{display:flex;flex-wrap:wrap;gap:7px}
+  #exp .spchip{font-family:var(--body);font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surf2);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.12s}
+  #exp .spchip .spdot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+  #exp .spchip[aria-pressed="true"]{border-color:var(--accent);color:var(--text);background:rgba(0,255,255,.08)}
+  #exp .spchip[aria-pressed="true"] .spdot{background:var(--accent)}
+  #exp .spchip.me[aria-pressed="true"]{border-color:var(--line2);background:rgba(255,255,255,.05)}
+  #exp .spchip.me[aria-pressed="true"] .spdot{background:var(--text)}
+  #exp .spcalc{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border-radius:10px;background:var(--surf2);border:1px solid var(--line)}
+  #exp .spk{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  #exp .spk b{color:var(--text)}
+  #exp .speach{font-family:var(--disp);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+  #exp .go2{font-family:var(--mono);font-weight:700;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:11px;border-radius:10px;border:1px solid var(--accent);background:rgba(0,255,255,.1);color:var(--accent);cursor:pointer}
+  #exp .go2:hover{background:rgba(0,255,255,.18)}
+  #exp .go2:disabled{opacity:.4;cursor:not-allowed}
+
+  /* calendar */
+  #exp .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  #exp .calhead .mo{font-family:var(--disp);font-weight:700;font-size:19px}
+  #exp .calhead .nav{display:flex;gap:6px}
+  #exp .navb{font-family:var(--mono);font-size:13px;color:var(--muted);border:1px solid var(--line);background:transparent;border-radius:8px;width:30px;height:30px;cursor:pointer}
+  #exp .dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px}
+  #exp .dow span{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:center}
+  #exp .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+  #exp .cell{aspect-ratio:1/1;border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:6px 7px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;overflow:hidden}
+  #exp .cell.pad{opacity:.28;pointer-events:none}
+  #exp .cell .dn{font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  #exp .cell .amt{font-family:var(--disp);font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  #exp .cell .fill{position:absolute;left:0;right:0;bottom:0;background:var(--red);opacity:.16}
+  #exp .cell.today{border-color:var(--line2)}
+  #exp .cell.today .dn{color:var(--text)}
+  #exp .cell.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 16px rgba(0,255,255,.18)}
+  #exp .cell.sel .dn{color:var(--accent)}
+  #exp .cell.zero .amt{color:var(--faint);font-family:var(--mono);font-weight:400;font-size:10px}
+  #exp .cell .inc{position:absolute;top:5px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+  /* phone: 7 columns leave ~28px of usable width per cell — tighten the type and drop the cents */
+  @media(max-width:560px){
+    #exp .cell{padding:5px 4px;border-radius:8px;aspect-ratio:auto;min-height:54px}
+    #exp .cell .dn{font-size:10px}
+    #exp .cell .amt{font-size:11px}
+    #exp .cell .amt .cents{display:none}
+    #exp .cell.zero .amt{font-size:9px}
+    #exp .cell .inc{top:3px;right:3px;width:4px;height:4px}
+    #exp .dow span{font-size:8px;letter-spacing:.02em}
+  }
+
+  /* custom date picker (recent-day strip + expandable month grid) */
+  #exp .expInbox{margin-top:12px;border:1px solid var(--accent);border-radius:12px;padding:11px;background:color-mix(in srgb,var(--accent) 6%,var(--bg2))}
+  #exp .expInboxHead{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  #exp .expCap{border:1px solid var(--line);border-radius:12px;background:var(--surf);padding:12px;margin-top:8px;display:flex;flex-direction:column;gap:11px}
+  #exp .expCapTop{display:flex;align-items:center;gap:10px}
+  #exp .expCapIcon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none;background:var(--surf2)}
+  #exp .expCapItem{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--text);font-family:var(--body);font-weight:600;font-size:14px;padding:4px 2px}
+  #exp .expCapItem:focus{outline:none;border-bottom-color:var(--accent)}
+  #exp .expCapAmt{display:flex;align-items:center;gap:1px;color:var(--red);font-family:var(--disp);font-weight:800;font-size:20px;flex:none}
+  #exp .expCapAmt input{width:74px;background:transparent;border:0;color:var(--red);font:inherit;text-align:right;font-variant-numeric:tabular-nums}
+  #exp .expCapAmt input:focus{outline:none}
+  #exp .expCapRow{display:flex;gap:8px;flex-wrap:wrap}
+  #exp .expCapRow select,#exp .expCapRow input{flex:1;min-width:92px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 8px;color-scheme:dark}
+  #exp .expCapBtns{display:flex;gap:8px}
+  #exp .expCapBtns button{flex:1;font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:9px;border-radius:9px;cursor:pointer;border:1px solid var(--line)}
+  #exp .expCapDismiss{background:transparent;color:var(--muted)}
+  #exp .expCapDismiss:hover{border-color:var(--line2);color:var(--text)}
+  #exp .expCapCreate{background:var(--accent);color:#04121a;border-color:var(--accent)}
+  #exp .dp-strip{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin}
+  #exp .dp-strip::-webkit-scrollbar{height:5px} #exp .dp-strip::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+  #exp .dp-card{flex:0 0 auto;min-width:58px;border:1px solid var(--line);border-radius:11px;background:var(--surf);padding:8px 8px 9px;text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+  #exp .dp-card:hover{border-color:var(--line2)}
+  #exp .dp-card .dw{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+  #exp .dp-card .dd{font-family:var(--disp);font-weight:700;font-size:18px;margin-top:2px;font-variant-numeric:tabular-nums;line-height:1.1}
+  #exp .dp-card.on{border-color:var(--accent);background:rgba(0,255,255,.1)}
+  #exp .dp-card.on .dd{color:var(--accent)} #exp .dp-card.on .dw{color:var(--accent)}
+  #exp .dp-more{flex:0 0 auto;min-width:52px;border:1px dashed var(--line2);border-radius:11px;background:transparent;color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:.12s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px}
+  #exp .dp-more:hover{border-color:var(--accent);color:var(--accent)}
+  #exp .dp-more span{font-size:15px;line-height:1}
+  #exp .dp-cur{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;color:var(--muted);margin-top:8px}
+  #exp .dp-cur b{color:var(--accent);font-weight:700}
+  #exp .dp-pop{display:none;background:var(--surf);border:1px solid var(--line2);border-radius:12px;padding:11px;margin-top:9px;box-shadow:0 14px 32px rgba(0,0,0,.5)}
+  #exp .dp-pop.show{display:block}
+  #exp .dp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+  #exp .dp-head .mo{font-family:var(--disp);font-weight:700;font-size:13.5px}
+  #exp .dp-head button{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:14px;display:grid;place-items:center;transition:.12s}
+  #exp .dp-head button:hover{border-color:var(--accent);color:var(--accent)}
+  #exp .dp-dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px}
+  #exp .dp-dow span{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);text-align:center}
+  #exp .dp-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+  #exp .dp-day{aspect-ratio:1/1;border:1px solid transparent;border-radius:8px;background:var(--bg2);font-family:var(--mono);font-size:12px;color:var(--text);font-variant-numeric:tabular-nums;display:grid;place-items:center;cursor:pointer;transition:.1s;position:relative}
+  #exp .dp-day:hover{border-color:var(--line2)}
+  #exp .dp-day.pad{opacity:.2;pointer-events:none;background:transparent}
+  #exp .dp-day.today{color:var(--accent)}
+  #exp .dp-day.today::after{content:"";position:absolute;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent)}
+  #exp .dp-day.sel{border-color:var(--accent);color:#04121a;background:var(--accent);box-shadow:0 0 12px rgba(0,255,255,.32)}
+  #exp .dp-day.sel::after{background:#04121a;box-shadow:none}
+
+  #exp .callegend{display:flex;align-items:center;gap:14px;margin-top:13px;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);flex-wrap:wrap}
+  #exp .callegend .sw{display:inline-flex;align-items:center;gap:6px}
+  #exp .callegend .box{width:12px;height:12px;border-radius:3px;border:1px solid var(--line)}
+
+  /* right column: day ledger + entry */
+  #exp .rcol{display:flex;flex-direction:column;gap:16px}
+  #exp .dayhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+  #exp .dayhead .d{font-family:var(--disp);font-weight:700;font-size:17px}
+  #exp .dayhead .t{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--red);font-variant-numeric:tabular-nums}
+  #exp .ledger{display:flex;flex-direction:column;gap:8px}
+  #exp .tx{display:flex;align-items:center;gap:11px;padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:var(--surf)}
+  #exp .tx .cat{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex-shrink:0;background:var(--surf2)}
+  #exp .tx .mid{flex:1;min-width:0}
+  #exp .tx .it{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #exp .tx .sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.03em;margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  #exp .tag{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:rgba(0,255,255,.1);color:var(--accent);border:1px solid rgba(0,255,255,.2)}
+  #exp .tx .amt{font-family:var(--disp);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #exp .tx .amt.out{color:var(--red)}
+  #exp .tx .amt.in{color:var(--green)}
+  #exp .tx.xfer .cat{background:rgba(0,255,255,.08)}
+  #exp .tx.xfer .amt{color:var(--muted)}
+  #exp .pay{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--muted)}
+
+  /* calendar/list toggle: date-grouped flat list */
+  #exp .glist{display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:2px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #exp .gdate{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:10px 0 2px;padding-top:8px;border-top:1px solid var(--line)}
+  #exp .gdate:first-child{margin-top:0;padding-top:0;border-top:none}
+
+  /* entry form */
+  #exp .entry{padding:16px 16px 17px}
+  #exp .seg{display:flex;gap:6px;margin-bottom:15px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:4px}
+  #exp .seg button{flex:1;font-family:var(--mono);font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:8px 0;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+  #exp .seg button.on{background:var(--red);color:#160707}
+  #exp .seg button.on.inc{background:var(--green);color:#052013}
+  #exp .seg button.on.xf{background:var(--accent);color:#06121a}
+  #exp .amtin{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:11px;padding:10px 14px;margin-bottom:12px;background:var(--bg2)}
+  #exp .amtin .cur{font-family:var(--mono);font-size:15px;color:var(--faint)}
+  #exp .amtin .val{flex:1;min-width:0;width:100%;font-family:var(--disp);font-weight:800;font-size:30px;letter-spacing:-.01em;color:var(--text);font-variant-numeric:tabular-nums}
+  #exp .amtin .cur2{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.1em}
+  #exp .frow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
+  #exp .fld{display:flex;flex-direction:column;gap:5px}
+  #exp .fld label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  #exp .fake{border:1px solid var(--line);border-radius:9px;background:var(--surf);padding:9px 11px;font-family:var(--body);font-size:12.5px;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #exp .fake.ph{color:var(--faint)}
+  #exp .fake .cv{color:var(--faint);font-family:var(--mono);font-size:11px}
+  #exp .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+  #exp .chip{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.03em;padding:5px 9px;border-radius:8px;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  #exp .chip.on{border-color:var(--accent);color:var(--accent);background:rgba(0,255,255,.08)}
+  #exp .save{margin-top:14px;width:100%;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:12px;border-radius:10px;border:1px solid var(--accent);background:rgba(0,255,255,.12);color:var(--accent);cursor:pointer}
+
+  /* month summary strip */
+  #exp .summary{margin-top:22px}
+  #exp .cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  #exp .catcard{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;gap:7px;cursor:pointer;transition:border-color .12s}
+  #exp .catcard:hover,#exp .catcard:focus-visible{border-color:var(--line2);outline:none}
+  #exp .catcard .nm{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;gap:6px;align-items:center;min-width:0}
+  /* category drill-down modal */
+  #expCatModal{display:none;position:fixed;inset:0;z-index:60}
+  #expCatModal .emBack{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(2px)}
+  #expCatModal .emCard{position:relative;max-width:520px;margin:7vh auto 0;background:var(--surf);border:1px solid var(--line);border-radius:16px;padding:15px 16px 16px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  #expCatModal .emHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  #expCatModal .emTitle{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;gap:8px;align-items:center}
+  #expCatModal .emX{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:3px 8px;border-radius:8px;line-height:1}
+  #expCatModal .emX:hover{background:var(--surf2);color:var(--text)}
+  #expCatModal .emSum{font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;color:var(--muted);margin-bottom:11px}
+  #expCatModal .ledger{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #exp .catcard .v{font-family:var(--disp);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+  #exp .catcard .catback{font-family:var(--mono);font-size:9px;letter-spacing:.03em;text-transform:uppercase;color:var(--faint);margin-top:-4px}
+  #exp .catbar{height:6px;border-radius:4px;background:var(--surf2);overflow:hidden;margin-top:auto}
+  #exp .catbar i{display:block;height:100%;border-radius:4px}
+  #exp .catbar.bud{position:relative}
+  #exp .catbar.bud s{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.45)} /* month-pace tick */
+  #exp .catback.bover{color:var(--red);font-weight:700}
+  #exp .billsec{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  #exp .billHead{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  #exp .billrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+  #exp .billrow:last-child{border-bottom:0}
+  #exp .billrow .bl{flex:1;min-width:0;font-size:12.5px;color:var(--muted)}
+  #exp .billrow .bl b{color:var(--text);font-weight:600}
+  #exp .billrow .bnote{font:10px var(--mono);color:var(--faint)}
+  #exp .billrow .ba{font-family:var(--disp);font-weight:700;font-variant-numeric:tabular-nums}
+  #exp .bchip{font:10px var(--mono);font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+  #exp .bchip.soon{color:var(--warn);border-color:var(--warn)}
+  #exp .bchip.late{color:var(--red);border-color:var(--red)}
+  #bdlg .brow{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center;padding:5px 0}
+  #bdlg .brow label{margin:0;font-size:12px;text-transform:none;letter-spacing:0;color:var(--text)}
+  #bdlg .brow input{text-align:right;font-variant-numeric:tabular-nums}
+
+  /* main grid */
+  #exp .main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+  @media(max-width:900px){#exp .main{grid-template-columns:minmax(0,1fr)}}
+
+  #exp .h2{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+    display:flex;align-items:center;gap:9px;margin:0 2px 11px}
+  #exp .h2 .rule{height:1px;background:var(--line);flex:1}
+
+  #exp .note{max-width:1120px;margin:26px auto 0;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+  #exp .note b{color:var(--text)}
+  /* expenses glance-insights line (pace · streak · month-over-month) */
+  #exp .insline{margin-top:8px;font:11px var(--mono,monospace);color:var(--muted)}
+  #exp .insline .good{color:var(--green);font-weight:700}
+  #exp .insline .warm{color:var(--warn);font-weight:700}
+  /* unread marker on announcement rows (cleared once the tab has been opened) */
+  .newdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:1px;box-shadow:0 0 6px var(--accent)}
+  /* touch targets: the densest, most-tapped controls sat well under the 44px iOS minimum */
+  @media(max-width:760px){
+    .btn,.mini,.navb,.nav-btn,.gbtn,.selbtn{min-height:42px}
+    .navb,.nav-btn{min-width:42px}
+    .tab,[data-sec],[data-view]{padding-top:9px;padding-bottom:9px}
+    /* deadline manifest rows: the icon-only chips were ~30px wide in the card's right column.
+       On phones the badge stays top-right and the actions drop to a full-width row of big buttons. */
+    .row .racol{display:contents}
+    .row .racol>.bdg{justify-self:end;align-self:start}
+    .row .rowacts{grid-column:1/-1;margin-top:2px;gap:8px;justify-content:stretch}
+    .row .rowacts .mini{flex:1 1 0;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;padding:0 10px}
+    .row .rowacts .mini [aria-hidden]{font-size:18px;line-height:1}
+    .row .rowacts .mini-done{color:var(--text);border-color:var(--line2)}
+    .acts .mini{min-width:44px}
+  }
+  /* iOS Safari zooms the whole page when focusing any control whose font-size is under 16px —
+     keep every text-entry control at 16px on phones. Kept LAST so it wins the cascade
+     (incl. the #exp-scoped 14px/11px rules). Checkbox/radio/file don't trigger zoom. */
+  @media(max-width:760px){
+    input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea,
+    #exp .sf input,#exp .spadd,
+    #exp .expCapRow select,#exp .expCapRow input,
+    #exp .expCapAmt input,#exp input.fake,
+    .gin{font-size:16px}
+  }
+</style>
+</head>
+<body>
+<main><div class="wrap">
+  <div class="topbar"><div class="brand"><span class="mark" aria-hidden="true"></span>Expenses</div></div>
+  <div id="app"></div>
+</div></main>
+<dialog id="vdlg">
+  <h3>Connect your vault</h3>
+  <p style="color:var(--muted);font-size:12px;margin:2px 0 10px">Your ledger syncs to a <b>private</b> GitHub repo you own. The token stays on this device only. See <a href="docs/SETUP.md" target="_blank" rel="noopener" style="color:var(--accent)">docs/SETUP.md</a>.</p>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <label style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">GitHub username<input id="vOwner" autocomplete="off" autocapitalize="none" placeholder="e.g. alice" style="margin-top:4px"/></label>
+    <label style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Private repo name<input id="vRepo" autocomplete="off" autocapitalize="none" value="expenses-vault" style="margin-top:4px"/></label>
+    <label style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Fine-grained token<input id="vTok" type="password" autocomplete="off" placeholder="github_pat_… (blank = disconnect)" style="margin-top:4px"/></label>
+  </div>
+  <div class="macts"><button class="btn ghost" id="vdlgX">Cancel</button><button class="btn" id="vdlgS">Save</button></div>
+</dialog>
+<dialog id="billdlg">
+  <h3 id="billdlgT">New bill</h3>
+  <div id="billdlgBody" style="display:flex;flex-direction:column;gap:9px"></div>
+  <div class="macts"><button class="btn ghost" id="billdlgD" style="margin-right:auto;color:var(--red)">Delete</button><button class="btn ghost" id="billdlgX">Cancel</button><button class="btn" id="billdlgS">Save</button></div>
+</dialog>
+<dialog id="bdlg">
+  <h3>Monthly budgets</h3>
+  <p style="color:var(--muted);font-size:12px;margin:2px 0 6px">Cap per category — bar turns amber past the month-pace line, red over budget. Blank = no budget.</p>
+  <div id="bdlgRows"></div>
+  <div class="macts"><button class="btn ghost" id="bdlgX">Cancel</button><button class="btn" id="bdlgS">Save</button></div>
+</dialog>
+
+<script src="scripts/accounts.js"></script>
+<script src="scripts/vault.js"></script>
+<script src="scripts/expenses-calc.js"></script>
+<script src="scripts/expenses-sync.js"></script>
+<script src="scripts/expenses-capture.js"></script>
+<script src="scripts/undo-delete.js"></script>
+<script>
+const app=document.getElementById("app");
+const section="expenses"; // the ported sync code re-renders only when this view is showing; here it always is
+const GHTOKKEY="ex_ghtoken", VAULTKEY="ex_vault";
+function ghToken(){return localStorage.getItem(GHTOKKEY)||"";}
+// Vault settings: GitHub username, private repo name, and the fine-grained token (device-local).
+// Resolves true when saved with a token, false on cancel or disconnect.
+function connectGitHub(){
+  const dlg=document.getElementById("vdlg"), cfg=vaultCfg();
+  document.getElementById("vOwner").value=cfg.owner||"";
+  document.getElementById("vRepo").value=cfg.repo||"expenses-vault";
+  document.getElementById("vTok").value=ghToken();
+  return new Promise((resolve)=>{
+    const done=(v)=>{ dlg.close(); resolve(v); };
+    document.getElementById("vdlgX").onclick=()=>done(false);
+    dlg.onclose=()=>resolve(false);
+    document.getElementById("vdlgS").onclick=()=>{
+      const owner=document.getElementById("vOwner").value.trim().replace(/^@/,""), repo=document.getElementById("vRepo").value.trim()||"expenses-vault", tok=document.getElementById("vTok").value.trim();
+      localStorage.setItem(VAULTKEY, JSON.stringify({owner, repo}));
+      if(tok) localStorage.setItem(GHTOKKEY, tok); else localStorage.removeItem(GHTOKKEY);
+      dlg.onclose=null; done(!!tok && !!owner);
+    };
+    dlg.showModal();
+  });
+}
+// First successful pull on a device: drop README.md + CLAUDE.md into a brand-new vault so the
+// owner (and their Claude) know what the repo is. 404 -> PUT; 200 -> never overwritten.
+async function seedVault(){
+  const tok=ghToken(); if(!tok) return;
+  const H={Authorization:"Bearer "+tok,Accept:"application/vnd.github+json"};
+  for(const f of Vault.seedFiles()){
+    const url=`${_vaultBase()}/${f.path}`;
+    const r=await fetch(url+"?ref="+VAULT_BRANCH,{headers:H,cache:"no-store"});
+    if(r.status!==404) continue;
+    const content=btoa(unescape(encodeURIComponent(f.text)));
+    const w=await fetch(url,{method:"PUT",headers:{...H,"Content-Type":"application/json"},body:JSON.stringify({message:"seed "+f.path,content,branch:VAULT_BRANCH})});
+    if(!w.ok) throw new Error("seed "+f.path+" HTTP "+w.status);
+  }
+}
+let _seedChain=null;
+function seedVaultOnce(){
+  const cfg=expCfgLocal(); if(cfg.seeded||_seedChain) return;
+  _seedChain=seedVault().then(()=>{ const c=expCfgLocal(); c.seeded=true; saveExpCfgLocal(c); }).catch(e=>console.warn("vault seed skipped:",e.message)).finally(()=>{ _seedChain=null; });
+}
+async function fJson(u,f){try{const r=await fetch(u,{cache:"no-store"});if(r.ok)return await r.json();}catch(e){}return f;}
+function toast(msg){
+  let el=document.getElementById("toast");
+  if(!el){el=document.createElement("div");el.id="toast";el.setAttribute("role","status");el.setAttribute("aria-live","polite");document.body.appendChild(el);}
+  // clear-then-set so repeating the same message ("Updated") still re-announces in screen readers
+  el.textContent="";requestAnimationFrame(()=>{el.textContent=msg;});el.classList.add("show");
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),2200);
+}
+// Undo bar for deletes: one pending delete at a time (scripts/undo-delete.js). The commit runs when
+// the window closes, on the next delete, or when the page is hidden/closed — never lost.
+const UNDO=UndoDelete.createUndo({ms:8000});
+function undoDelete(msg,commit,restore){
+  UNDO.push({commit:()=>{hideUndoBar();if(commit)commit();},restore:()=>{hideUndoBar();restore();toast("Restored");}});
+  let el=document.getElementById("undobar");
+  if(!el){el=document.createElement("div");el.id="undobar";el.setAttribute("role","status");el.setAttribute("aria-live","polite");
+    el.innerHTML=`<span class="umsg"></span><button type="button" class="ubtn">Undo</button>`;document.body.appendChild(el);
+    el.querySelector(".ubtn").onclick=()=>UNDO.undo();}
+  el.querySelector(".umsg").textContent=msg;el.classList.add("show");
+}
+function hideUndoBar(){const el=document.getElementById("undobar");if(el)el.classList.remove("show");}
+window.addEventListener("pagehide",()=>UNDO.flush());
+function t0(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function pd(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);}
+function iso(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function dleft(s){return Math.round((pd(s)-t0())/864e5);}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function kb(el,role){el.tabIndex=0;if(role!==false&&!el.hasAttribute("role"))el.setAttribute("role","button");
+  el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();el.click();}});}
+
+let EXP_CFG = { defaultAccounts: [], categories: [], incomeCategories: [], tags: [] };
+const EXPKEY = "ex_txns", EXPAKEY = "ex_accounts", EXPCKEY = "ex_cfg";
+function expTxns(){ try { return JSON.parse(localStorage.getItem(EXPKEY) || "[]"); } catch(_) { return []; } }
+function saveExpTxns(a){ localStorage.setItem(EXPKEY, JSON.stringify(a)); }
+const EXPOKEY = "ex_owed"; // "who owes me" IOUs — private, syncs with the vault like txns
+function expOwed(){ try { return JSON.parse(localStorage.getItem(EXPOKEY) || "[]"); } catch(_) { return []; } }
+function saveExpOwed(a){ localStorage.setItem(EXPOKEY, JSON.stringify(a)); }
+const EXPBKEY = "ex_budgets"; // per-category monthly caps {cat:{amount,mtime}} — private, vault-synced
+function expBudgets(){ try { return JSON.parse(localStorage.getItem(EXPBKEY) || "{}"); } catch(_) { return {}; } }
+function saveExpBudgets(o){ localStorage.setItem(EXPBKEY, JSON.stringify(o)); }
+const EXPBILLKEY = "ex_bills"; // upcoming BNPL/credit bills {id:{label,account,amount,due,paid,payFrom,note,mtime}} — private, vault-synced
+function expBills(){ try { return JSON.parse(localStorage.getItem(EXPBILLKEY) || "{}"); } catch(_) { return {}; } }
+function saveExpBills(o){ localStorage.setItem(EXPBILLKEY, JSON.stringify(o)); }
+const EXPVALKEY = "ex_valuations"; // {accountId:{sgd,usd,asOf,mtime}} — reserved for an optional server job; nothing in this app writes it
+function expValuations(){ try { return JSON.parse(localStorage.getItem(EXPVALKEY) || "{}"); } catch(_) { return {}; } }
+function saveExpValuations(o){ localStorage.setItem(EXPVALKEY, JSON.stringify(o)); }
+// friends for the split picker = the people you've logged paybacks from
+function expFriends(){ const s=new Set(); for(const t of expTxns()) if(t.type==="income" && t.category==="Pay back" && t.item) s.add(t.item); return Array.from(s).sort(); }
+function expAcctLocal(){ try { return Accounts.normalize(JSON.parse(localStorage.getItem(EXPAKEY) || "{}")); } catch(_) { return {}; } }
+function saveExpAccounts(o){ localStorage.setItem(EXPAKEY, JSON.stringify(o)); }
+function expCfgLocal(){ try { return JSON.parse(localStorage.getItem(EXPCKEY) || "{}"); } catch(_) { return {}; } }
+function saveExpCfgLocal(o){ localStorage.setItem(EXPCKEY, JSON.stringify(o)); }
+
+const EXPTKEY = "ex_tomb";
+function expTomb(){ try { return JSON.parse(localStorage.getItem(EXPTKEY) || "{}"); } catch(_) { return {}; } }
+function saveExpTomb(o){ localStorage.setItem(EXPTKEY, JSON.stringify(o)); }
+
+// One-time: stamp mtime on Phase-1 txns/accounts that predate sync, so the merge can order them.
+function expMigrate(){
+  const cfg = expCfgLocal(); if (cfg.migrated) return;
+  const txns = expTxns(); let changed = false;
+  for (const t of txns) if (t.mtime == null) { t.mtime = Date.parse(t.date) || Date.now(); changed = true; }
+  if (changed) saveExpTxns(txns);
+  const accts = expAcctLocal(); let ac = false;
+  for (const id in accts) if (accts[id].mtime == null) { accts[id].mtime = Date.now(); ac = true; }
+  if (ac) saveExpAccounts(accts);
+  cfg.migrated = true; saveExpCfgLocal(cfg);
+}
+
+// Gather everything that syncs into one state object.
+function expLocalState(){
+  const cfg = expCfgLocal();
+  return {
+    txns: expTxns(),
+    owed: expOwed(),
+    budgets: expBudgets(),
+    bills: expBills(),
+    valuations: expValuations(),
+    tombstones: expTomb(),
+    accounts: expAcctLocal(),
+    // customCategories/customTags: forward stub — no add-category UI in Phase 1/2; syncs empty today, ready for later.
+    categories: cfg.customCategories || [],
+    tags: cfg.customTags || [],
+    updatedAt: Number(cfg.updatedAt) || 0,
+  };
+}
+
+// Write a merged state back to localStorage (does NOT trigger another push).
+function applyMergedState(m){
+  saveExpTxns(m.txns || []);
+  saveExpOwed(m.owed || []);
+  saveExpBudgets(m.budgets || {});
+  saveExpBills(m.bills || {});
+  saveExpValuations(m.valuations || {});
+  saveExpTomb(m.tombstones || {});
+  saveExpAccounts(Accounts.normalize(m.accounts || {}));
+  const cfg = expCfgLocal();
+  cfg.customCategories = m.categories || [];
+  cfg.customTags = m.tags || [];
+  cfg.updatedAt = m.updatedAt || Date.now();
+  saveExpCfgLocal(cfg);
+}
+
+// Private vault repo (NOT a Pages source — keeps financial data off the public site).
+const VAULT_BRANCH = "main", VAULT_FILE = "expenses-data.json";
+function vaultCfg(){ try { const c = JSON.parse(localStorage.getItem(VAULTKEY) || "null"); if (c && c.owner && c.repo) return c; } catch(_){} return Vault.defaultsFromHost(location.hostname); }
+function _vaultBase(){ const c = vaultCfg(); return Vault.contentsUrl(c, "").replace(/\/$/, ""); }
+function _vaultUrl(){ return Vault.contentsUrl(vaultCfg(), VAULT_FILE); }
+
+async function pullVault(){
+  const tok = ghToken(); if(!tok) throw new Error("no token");
+  const H = { Authorization:"Bearer "+tok, Accept:"application/vnd.github+json" };
+  const r = await fetch(_vaultUrl()+"?ref="+VAULT_BRANCH, { headers:H, cache:"no-store" });
+  if (r.status === 404) return { data:null, sha:null };
+  if (!r.ok) throw new Error("pull HTTP "+r.status);
+  const j = await r.json();
+  const text = decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))));
+  let data = null; try { data = JSON.parse(text); } catch(_){ data = null; }
+  return { data, sha: j.sha };
+}
+
+async function pushVault(obj, sha){
+  const tok = ghToken(); if(!tok) throw new Error("no token");
+  const H = { Authorization:"Bearer "+tok, Accept:"application/vnd.github+json" };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(obj,null,2)+"\n")));
+  const body = { message:"Sync expenses from site", content, branch:VAULT_BRANCH };
+  if (sha) body.sha = sha;
+  const r = await fetch(_vaultUrl(), { method:"PUT", headers:{...H,"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  if (r.status === 409) { const e = new Error("sha conflict"); e.status = 409; throw e; }
+  if (!r.ok) throw new Error("push HTTP "+r.status+" "+(await r.text()).slice(0,120));
+  return (await r.json()).content.sha;
+}
+
+// Phase 3 capture inbox: list/delete capture files in the private vault's captures/ folder.
+async function listCaptures() {
+  const tok = ghToken(); if (!tok) return [];
+  const base = _vaultBase();
+  const r = await fetch(`${base}/captures?ref=${VAULT_BRANCH}`, {
+    headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json" }, cache: "no-store" });
+  if (r.status === 404) return [];                 // folder not created yet
+  if (!r.ok) throw new Error("listCaptures " + r.status);
+  const files = await r.json();
+  const out = [];
+  for (const f of files) {
+    if (!f.name || !f.name.endsWith(".json")) continue;
+    try {
+      const cr = await fetch(`${base}/${f.path}?ref=${VAULT_BRANCH}`, {
+        headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json" }, cache: "no-store" });
+      if (!cr.ok) continue;
+      const cj = await cr.json();
+      const data = JSON.parse(decodeURIComponent(escape(atob(cj.content.replace(/\n/g, "")))));  // strip GitHub's multi-line base64, matching pullVault
+      out.push({ id: data.id || f.name.replace(/\.json$/, ""), path: f.path, sha: f.sha,
+                 ts: Number(data.ts) || 0, text: String(data.text || ""),
+                 // Fields the Shortcut pre-parsed (and you may have edited on the phone). Absent on
+                 // old raw-OCR captures, in which case the card falls back to parsing text below.
+                 // The Shortcut may send "" for a field it couldn't guess — treat empty/NaN as absent
+                 // so a missed amount falls back to the OCR parse instead of becoming $0.
+                 amount: (data.amount != null && data.amount !== "" && isFinite(Number(data.amount)) ? Number(data.amount) : null),
+                 merchant: (data.merchant != null ? String(data.merchant) : ""),
+                 category: (data.category != null ? String(data.category) : ""),
+                 date: (data.date != null ? String(data.date) : ""),
+                 type: (data.type === "income" ? "income" : "expense") });
+    } catch (_) { /* skip a malformed capture */ }
+  }
+  return out;
+}
+async function deleteCapture(path, sha) {
+  const tok = ghToken(); if (!tok || !path || !sha) return;
+  const url = `${_vaultBase()}/${path}`;
+  await fetch(url, { method: "DELETE",
+    headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json" },
+    body: JSON.stringify({ message: "capture imported", sha, branch: VAULT_BRANCH }) });
+}
+
+let expSyncState = "local"; // local | syncing | ok | pending | error
+let _expSyncTimer = null, _expSyncChain = Promise.resolve();
+
+function expSetSync(s){ expSyncState = s; const el = document.getElementById("expSyncPill"); if (el){ el.outerHTML = expSyncPill(); expWireSyncPill(document); } }
+
+function expSyncPill(){
+  const map = { local:[(ghToken()&&Vault.isConfigured(vaultCfg()))?"local only":"not connected · tap to set up","var(--faint)"], syncing:["syncing…","var(--accent)"], ok:["synced","var(--green)"], pending:["pending","var(--warn)"], error:["sync error","var(--red)"] };
+  const [txt,col] = map[expSyncState] || map.local;
+  return `<span id="expSyncPill" title="Tap to sync now" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:5px 4px"><span style="width:7px;height:7px;border-radius:50%;background:${col};box-shadow:0 0 6px ${col};flex:none"></span>${txt}</span>`;
+}
+function expWireSyncPill(root){ const el=(root||document).querySelector("#expSyncPill"); if(el) el.onclick=()=>{ if(!ghToken()||!Vault.isConfigured(vaultCfg())||expSyncState==="error"){ connectGitHub().then(ok=>{ if(ok) expSync(false); else rExpenses(); }); } else expSync(false); }; }
+function expVaultSettings(){ connectGitHub().then(ok=>{ if(ok) expSync(false); else rExpenses(); }); }
+
+// One sync pass (pull->merge->push). silent=true suppresses re-render when nothing changed.
+function expSync(silent){
+  if (!ghToken() || !Vault.isConfigured(vaultCfg())) { expSetSync("local"); return Promise.resolve(); }
+  expSetSync("syncing");
+  _expSyncChain = _expSyncChain.then(async () => {
+    try {
+      if (!expCfgLocal().everSynced) {
+        // A device that has never synced holds setup rows only. If the vault already has accounts,
+        // its rows must win the per-id merge, or "Skip, connect later" would overwrite real balances.
+        const first = await pullVault();
+        if (first.data && first.data.accounts && Object.keys(first.data.accounts).length)
+          saveExpAccounts(Accounts.yieldToRemote(expAcctLocal(), first.data.accounts));
+      }
+      const before = expLocalState();
+      const { merged } = await ExpensesSync.syncOnce({ local: before, pull: pullVault, push: pushVault, now: Date.now() });
+      const current = expLocalState();                                   // may include txns saved during the network round-trip
+      const finalState = ExpensesSync.merge(current, merged, Date.now()); // re-merge so nothing added mid-flight is lost
+      // Stale-module guard: right after a deploy the SW can serve the PREVIOUS cached
+      // expenses-sync.js for one load, whose merge doesn't know newer state fields —
+      // carry them through instead of wiping them (the vault heals on the next sync).
+      if(!finalState.budgets) finalState.budgets = current.budgets || {};
+      if(!finalState.bills) finalState.bills = current.bills || {};
+      if(!finalState.valuations) finalState.valuations = current.valuations || {};
+      if(!finalState.owed) finalState.owed = current.owed || [];
+      const changed = !ExpensesSync.sameState(finalState, current);
+      applyMergedState(finalState);
+      { const c = expCfgLocal(); if (!c.everSynced) { c.everSynced = true; saveExpCfgLocal(c); } }
+      expSetSync("ok");
+      seedVaultOnce();
+      const editing = document.activeElement && document.getElementById("expForm") && document.getElementById("expForm").contains(document.activeElement);
+      if (section === "expenses" && (changed || !silent) && !editing) rExpenses();
+    } catch (e) {
+      expSetSync(navigator.onLine ? "error" : "pending");
+      console.error("expenses sync failed:", e.message);
+    }
+  });
+  return _expSyncChain;
+}
+
+// Debounced push after a local change (batches rapid entries into one sync).
+function expQueueSync(){
+  if (!ghToken()) return;
+  expSetSync("pending");
+  clearTimeout(_expSyncTimer);
+  _expSyncTimer = setTimeout(() => expSync(true), 2500);
+}
+// Accounts are DATA (synced map in ex_accounts), not public config. Visible = not archived,
+// default first. The public expenses.json only seeds the first-run defaults (Task 6).
+function expAccounts(){ return Accounts.visible(expAcctLocal()); }
+function expDefaultAccountId(){ const a = Accounts.defaultAccount(expAcctLocal()); return a ? a.id : ""; }
+function expNeedsSetup(){ return Object.keys(expAcctLocal()).length === 0; }
+// First-run ("first") and Manage accounts ("manage"). Accounts are DATA: this screen edits a
+// working copy of the accounts map and writes it back on Save; every touched row gets a fresh
+// mtime (Accounts.* helpers) so the sync merge carries exactly those changes.
+const EXP_PALETTE = ["#4f8df7","#2e9e5b","#ff4d8d","#00b14f","#f5a623","#a78bfa","#37d3a0","#e0556b"];
+function expRenderSetup(mode){
+  const first = mode !== "manage";
+  let w = first ? Accounts.fromDefaults(EXP_CFG.defaultAccounts||[], Date.now()) : {...expAcctLocal()};
+  let showArchived = false, connectCard = first;
+  const nextColour = () => { const used = new Set(Object.values(w).map(a=>a.colour)); return EXP_PALETTE.find(c=>!used.has(c)) || EXP_PALETTE[Object.keys(w).length % EXP_PALETTE.length]; };
+  const addAccount = (name, credit, limit, colour, icon) => {
+    const id = Accounts.slugId(name, Object.keys(w));
+    w = Accounts.upsert(w, { id, name, colour: colour||nextColour(), icon: icon||name.trim()[0].toUpperCase(), credit: !!credit, limit: credit?(Number(limit)||0):undefined, start: 0, topUpLine: undefined }, Date.now());
+    if (!credit && !Accounts.defaultAccount(w)) w = Accounts.setDefault(w, id, Date.now());
+    paint();
+  };
+  const inp = 'style="background:var(--surf);border:1px solid var(--line);color:var(--text)"';
+  const row = (a) => `
+    <div class="frow setrow" data-id="${esc(a.id)}" style="grid-template-columns:auto 1fr auto;align-items:end">
+      <span class="ic" aria-hidden="true" style="background:${esc(a.colour||"#555")};width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px">${esc(a.icon||a.name[0])}</span>
+      <div class="fld"><label>${a.credit?"Credit account":"Account"}${a.default?" · default":""}${a.archived?" · archived":""}</label><input class="fake set-name" value="${esc(a.name)}" placeholder="Name" ${inp}/></div>
+      <div class="fld"><label>${first?(a.credit?"Owed now":"Balance now"):(a.credit?"Starting owed":"Starting balance")}</label><input class="fake set-start" inputmode="decimal" value="${esc(String(a.start?(a.credit?-a.start:a.start):""))}" placeholder="0.00" style="background:var(--surf);border:1px solid var(--line);color:var(--text);width:110px"/></div>
+      ${!first ? `<div class="fld" style="grid-column:2"><label>${a.credit?"Credit limit":"Warn when below"}</label><input class="fake set-line" inputmode="decimal" value="${a.credit?esc(String(a.limit||"")):esc(a.topUpLine!=null?String(a.topUpLine):"")}" placeholder="${a.credit?"0":"off"}" ${inp}/></div>` : ""}
+      <div style="display:flex;gap:6px;grid-column:3;margin-bottom:6px">
+        ${!first && !a.credit && !a.archived && !a.default ? `<button class="mini set-def" title="Make this the default account">★</button>` : ""}
+        ${first ? `<button class="mini set-rm" title="Remove">✕</button>` : a.archived ? `<button class="mini set-restore">Restore</button>` : `<button class="mini set-arch" title="Hide this account (history is kept)">Archive</button>`}
+      </div>
+    </div>`;
+  function paint(){
+    const rows = Object.values(w).filter(a=>showArchived||!a.archived);
+    const have = new Set(Object.values(w).map(a=>Accounts.slugId(a.name,[])));
+    const chips = (EXP_CFG.suggestedAccounts||[]).filter(s=>!have.has(Accounts.slugId(s.name,[]))).map(s=>`<button class="mini set-chip" data-name="${esc(s.name)}" data-credit="${s.type==="credit"?1:0}" data-colour="${esc(s.colour)}" data-icon="${esc(s.icon)}">+ ${esc(s.name)}</button>`).join("");
+    app.innerHTML = `<div id="exp">
+      ${connectCard ? `<div class="card entry" style="max-width:560px;margin:20px auto 12px">
+        <div class="h2" style="margin-top:0">Already have a vault? <span class="rule"></span></div>
+        <p style="color:var(--muted);font-size:12.5px;margin:0 0 12px">If you set this app up on another device, connect the same private repo and your accounts and history come straight back. New here? Skip.</p>
+        <div style="display:flex;gap:8px"><button class="save" id="setConnect" style="margin-top:0;flex:1">Connect my vault</button><button class="mini" id="setSkip" style="flex:1">Skip</button></div>
+      </div>` : ""}
+      <div class="card entry" style="max-width:560px;margin:${connectCard?"0":"20px"} auto">
+        <div class="h2" style="margin-top:0">${first?"Set up your accounts":"Manage accounts"} <span class="rule"></span></div>
+        <p style="color:var(--muted);font-size:12.5px;margin:0 0 14px">${first
+          ?"Name each account and enter what is in it right now. You can add more later."
+          :"Balances here are each account's STARTING baseline; today's balance is that plus the logged transactions. Archive hides an account but keeps its history."}</p>
+        ${rows.map(row).join("") || `<div class="empty">No accounts yet — add one below.</div>`}
+        ${chips ? `<div class="chips" style="margin:12px 0 4px">${chips}</div>` : ""}
+        <div class="frow" style="grid-template-columns:1fr auto auto;align-items:end;margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div class="fld"><label>Add another account</label><input class="fake" id="setNewName" placeholder="e.g. Wise" ${inp}/></div>
+          <div class="fld"><label>Type</label><select id="setNewType" class="fake" ${inp}><option value="asset">Asset</option><option value="credit">Credit</option></select></div>
+          <button class="mini" id="setNewAdd" style="margin-bottom:6px">+ Add</button>
+        </div>
+        ${!first ? `<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--muted);cursor:pointer"><input type="checkbox" id="setShowArch" ${showArchived?"checked":""} style="width:auto"/> Show archived</label>` : ""}
+        <button class="save" id="setSave">${first?"Save & open dashboard":"Save changes"}</button>
+        ${first?"":`<button class="mini" id="setCancel" style="width:100%;margin-top:8px">Cancel</button>`}
+      </div></div>`;
+    wire();
+  }
+  const readRows = () => { // pull the editable fields back into the working map, bumping only rows that changed
+    app.querySelectorAll(".setrow").forEach(r=>{
+      const a = w[r.dataset.id]; if(!a) return;
+      const name = r.querySelector(".set-name").value.trim() || a.name;
+      const rawStart = r.querySelector(".set-start").value.trim();
+      let start = rawStart==="" ? (first?0:a.start) : (parseFloat(rawStart)||0);
+      if (a.credit) start = -Math.abs(start);
+      const lineEl = r.querySelector(".set-line");
+      let topUpLine = a.topUpLine, limit = a.limit;
+      if (lineEl) { const v = parseFloat(lineEl.value); if (a.credit) limit = isNaN(v)?0:v; else topUpLine = (isNaN(v)||v<=0)?undefined:v; }
+      if (name!==a.name || start!==a.start || topUpLine!==a.topUpLine || limit!==a.limit) w = Accounts.upsert(w, {...a, name, start, topUpLine, limit}, Date.now());
+    });
+  };
+  function wire(){
+    const c=document.getElementById("setConnect"); if(c) c.onclick=async()=>{ const ok=await connectGitHub(); if(!ok) return; c.disabled=true; c.textContent="Connecting…"; await expSync(false); if(!expNeedsSetup()){ rExpenses(); return; } c.disabled=false; c.textContent="Connect my vault";
+      if(expSyncState!=="ok"){ const v=vaultCfg(); toast(navigator.onLine?`Couldn't reach ${v.owner}/${v.repo} — check username, repo and token`:"You're offline — try again when connected"); return; }
+      toast("Vault is empty — set up your accounts below"); connectCard=false; paint(); };
+    const s=document.getElementById("setSkip"); if(s) s.onclick=()=>{ connectCard=false; paint(); };
+    app.querySelectorAll(".set-chip").forEach(b=>b.onclick=()=>{ readRows(); addAccount(b.dataset.name, b.dataset.credit==="1", 0, b.dataset.colour, b.dataset.icon); });
+    document.getElementById("setNewAdd").onclick=()=>{ const n=document.getElementById("setNewName").value.trim(); if(!n){ toast("Give the account a name"); return; } readRows(); addAccount(n, document.getElementById("setNewType").value==="credit", 0); };
+    app.querySelectorAll(".set-rm").forEach(b=>b.onclick=()=>{ readRows(); const id=b.closest(".setrow").dataset.id; delete w[id]; if(!Accounts.defaultAccount(w)){ const f=Object.values(w).find(a=>!a.credit); if(f) w=Accounts.setDefault(w,f.id,Date.now()); } paint(); });
+    app.querySelectorAll(".set-def").forEach(b=>b.onclick=()=>{ readRows(); w=Accounts.setDefault(w, b.closest(".setrow").dataset.id, Date.now()); paint(); });
+    app.querySelectorAll(".set-arch").forEach(b=>b.onclick=()=>{ readRows(); const id=b.closest(".setrow").dataset.id; const a=w[id];
+      const chk=Accounts.canArchive(a, ExpensesCalc.balances(Object.values(w), expTxns())); if(!chk.ok){ toast(chk.reason); return; }
+      w=Accounts.archive(w,id,Date.now()); if(a.default){ w=Accounts.upsert(w,{...w[id],default:false},Date.now()); const f=Accounts.defaultAccount(w); if(f) w=Accounts.setDefault(w,f.id,Date.now()); } paint(); });
+    app.querySelectorAll(".set-restore").forEach(b=>b.onclick=()=>{ readRows(); w=Accounts.restore(w, b.closest(".setrow").dataset.id, Date.now()); paint(); });
+    const sa=document.getElementById("setShowArch"); if(sa) sa.onchange=()=>{ readRows(); showArchived=sa.checked; paint(); };
+    document.getElementById("setSave").onclick=()=>{ readRows(); if(!Object.keys(w).length){ toast("Add at least one account"); return; } saveExpAccounts(w); expQueueSync(); rExpenses(); toast(first?"Accounts saved":"Updated"); };
+    const cx=document.getElementById("setCancel"); if(cx) cx.onclick=()=>rExpenses();
+  }
+  paint();
+}
+// Backup: export local accounts+txns to a JSON file, and restore from one.
+function expExport(){
+  const blob=new Blob([JSON.stringify(expLocalState(),null,2)],{type:"application/json"});
+  const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download="expenses-backup-"+iso(new Date())+".json"; a.click(); URL.revokeObjectURL(u);
+}
+function expImport(file){ const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result);
+  if(!d||typeof d!=="object"||(!d.txns&&!d.accounts)) throw new Error("shape");
+  for(const t of d.txns||[]) if(t.mtime==null) t.mtime = Date.parse(t.date) || Date.now();
+  for(const id in d.accounts||{}) if(d.accounts[id].mtime==null) d.accounts[id].mtime = Date.now();
+  if(d.accounts) d.accounts = Accounts.normalize(d.accounts);
+  const beforeN = expTxns().length;
+  applyMergedState(ExpensesSync.merge(expLocalState(), {...ExpensesSync.emptyState(), ...d}, Date.now()));
+  expQueueSync(); rExpenses(); toast(`Backup merged (${expTxns().length-beforeN} added)`); }catch(_){ toast("Invalid backup file"); } }; r.readAsText(file); }
+function expMoney(n){ return "$" + (Number(n)||0).toLocaleString("en-SG",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function expLoadState(){
+  const c = expCfgLocal();
+  return { ym: c.ym || defaultYm(), selDay: c.selDay ?? null, view: c.view || "cal" };
+}
+function defaultYm(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+let expState = expLoadState();
+function saveExpState(){ const c=expCfgLocal(); c.ym=expState.ym; c.selDay=expState.selDay; c.view=expState.view; saveExpCfgLocal(c); }
+
+function expCatIcon(cat){
+  const all = (EXP_CFG.categories||[]).concat(EXP_CFG.incomeCategories||[]);
+  const c = all.find(x=>x.id===cat); return c ? c.icon : "💸";
+}
+function expAcctName(id){ const a=expAcctLocal()[id]; return a?a.name:id; } // archived accounts keep their name in history
+function expAcctHtml(id){ return esc(expAcctName(id)); }
+
+let expEditingId = null;
+let expFormType = "expense";
+let expCaptures = [];                 // pending captures cached from the vault
+let expActiveCap = null;              // { id, path, sha } being confirmed, so save can clean it up
+const expDismissed = new Set();       // capture ids dismissed this session, so a re-fetch can't resurrect them before delete persists
+
+function expSaveTxn(obj){
+  obj.mtime = Date.now();
+  const arr = expTxns();
+  if(obj.id){ const i=arr.findIndex(t=>t.id===obj.id); if(i>=0) arr[i]=obj; else arr.push(obj); }
+  else { obj.id = "x"+Date.now()+Math.random().toString(36).slice(2,6); arr.push(obj); }
+  saveExpTxns(arr);
+  expQueueSync();
+}
+function expDeleteTxn(id){
+  saveExpTxns(expTxns().filter(t=>t.id!==id));
+  const tomb = expTomb(); tomb[id] = Date.now(); saveExpTomb(tomb);
+  expQueueSync();
+}
+
+function expRenderForm(){
+  const host = document.getElementById("expForm"); if(!host) return;
+  const accts = expAccounts();
+  const cats = (expFormType==="income"?EXP_CFG.incomeCategories:EXP_CFG.categories)||[];
+  const editing = expEditingId ? expTxns().find(t=>t.id===expEditingId) : null;
+  const cur = editing || { type: expFormType, date: expState.selDay?`${expState.ym}-${String(expState.selDay).padStart(2,"0")}`:iso(new Date()), tags:[] };
+  const selTags = new Set(cur.tags||[]);
+  const acctOpts = (sel)=>accts.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(a.name)}</option>`).join("")
+    + (sel && !accts.some(a=>a.id===sel) ? `<option value="${esc(sel)}" selected>${esc(expAcctName(sel))} (archived)</option>` : "");
+  const catOpts = cats.map(c=>`<option value="${esc(c.id)}" ${c.id===cur.category?"selected":""}>${esc(c.icon)} ${esc(c.id)}</option>`).join("");
+  const allTags = Array.from(new Set([...(EXP_CFG.tags||[]), ...((expCfgLocal().customTags)||[])]));
+  const tagChips = allTags.map(t=>`<span class="chip ${selTags.has(t)?"on":""}" data-tag="${esc(t)}">${esc(t)}</span>`).join("") + `<span class="chip" id="expTagAdd" style="border-style:dashed;color:var(--accent)">+ new</span>`;
+
+  host.innerHTML = `<div class="card entry">
+    <div class="h2" style="margin-top:0">${editing?"Edit":"Add"} transaction <span class="rule"></span>
+      ${editing?`<button class="mini" id="expDel">Delete</button>`:""}</div>
+    <div class="seg">
+      <button data-t="expense" class="${expFormType==="expense"?"on":""}">Expense</button>
+      <button data-t="income" class="${expFormType==="income"?"on inc":""}">Income</button>
+      <button data-t="transfer" class="${expFormType==="transfer"?"on xf":""}">Transfer</button>
+    </div>
+    <div class="amtin"><span class="cur">$</span>
+      <input class="val" id="expAmt" inputmode="decimal" value="${esc(cur.amount||"")}" placeholder="0.00"
+        style="background:transparent;border:0;color:var(--text);width:100%;font:inherit;font-family:var(--disp);font-weight:800;font-size:30px" />
+      <span class="cur2">SGD</span></div>
+    <div class="frow">
+      <div class="fld"><label>${expFormType==="transfer"?"From":"Account"}</label>
+        <select id="expAcct" class="fake">${acctOpts(cur.account)}</select></div>
+      <div class="fld"><label>${expFormType==="transfer"?"To":"Category"}</label>
+        ${expFormType==="transfer"
+          ? `<select id="expTo" class="fake">${acctOpts(cur.toAccount)}</select>`
+          : `<select id="expCat" class="fake">${catOpts}</select>`}</div>
+    </div>
+    <div class="fld"><label>Item</label><input id="expItem" class="fake" placeholder="e.g. Lunch @ canteen" value="${esc(cur.item||"")}" style="background:var(--surf);border:1px solid var(--line);color:var(--text)"/></div>
+    <div class="fld"><label>Date</label>
+      <input type="hidden" id="expDate" value="${esc(cur.date)}"/>
+      <div class="dp-strip" id="expStrip"></div>
+      <div class="dp-cur" id="expDpCur"></div>
+      <div class="dp-pop" id="expCalPop"></div>
+    </div>
+    ${expFormType==="transfer"?"":`<div class="fld"><label>Tags</label><div class="chips" id="expTags">${tagChips}</div></div>`}
+    ${expFormType==="expense"&&!editing?`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:2px 0 0"><input type="checkbox" id="expSplitAfter" style="width:auto;min-height:0;accent-color:var(--accent)"/><span style="font-size:12.5px;color:var(--muted)"><span aria-hidden="true">🤝</span> I paid for friends — split it after saving (adds IOUs)</span></label>`:""}
+    <button class="save" id="expSave">${editing?"Update":"Save"} transaction</button>
+  </div>`;
+
+  expBuildDatePicker(cur.date);
+  host.querySelectorAll(".seg button[data-t]").forEach(b=>b.onclick=()=>{ expFormType=b.dataset.t; expEditingId=null; expActiveCap = null; expRenderForm(); });
+  const picked = new Set(selTags);
+  host.querySelectorAll("#expTags .chip[data-tag]").forEach(c=>{kb(c);c.setAttribute("aria-pressed",c.classList.contains("on"));c.onclick=()=>{ const t=c.dataset.tag; if(picked.has(t)){picked.delete(t);c.classList.remove("on");}else{picked.add(t);c.classList.add("on");} c.setAttribute("aria-pressed",c.classList.contains("on")); };});
+  const _ta=host.querySelector("#expTagAdd"); if(_ta){ kb(_ta); _ta.onclick=()=>{ const t=(prompt("New tag (e.g. family):")||"").trim(); if(!t)return; const cfg=expCfgLocal(); if(!((cfg.customTags||[]).includes(t))){ cfg.customTags=[...(cfg.customTags||[]),t]; saveExpCfgLocal(cfg); expQueueSync(); } picked.add(t); const ch=document.createElement("span"); ch.className="chip on"; ch.dataset.tag=t; ch.textContent=t; kb(ch); ch.setAttribute("aria-pressed","true"); ch.onclick=()=>{ if(picked.has(t)){picked.delete(t);ch.classList.remove("on");}else{picked.add(t);ch.classList.add("on");} ch.setAttribute("aria-pressed",ch.classList.contains("on")); }; _ta.parentNode.insertBefore(ch,_ta); }; }
+  const del = document.getElementById("expDel"); if(del) del.onclick=()=>{ const id=expEditingId, gone=expTxns().find(t=>t.id===id);
+    expDeleteTxn(id); expEditingId=null; rExpenses(); if(!gone) return;
+    // Expense deletes persist at once (the vault syncs tombstones); undo re-adds the txn with a
+    // newer mtime, which beats the tombstone in ExpensesSync.merge (edited-after-delete rule).
+    undoDelete(`Deleted ${expMoney(gone.amount)} · ${gone.item||gone.category||"entry"}`, null, ()=>{
+      const tomb=expTomb(); delete tomb[id]; saveExpTomb(tomb);
+      saveExpTxns([...expTxns().filter(t=>t.id!==id), {...gone, mtime:Date.now()}]); expQueueSync(); rExpenses(); }); };
+  document.getElementById("expSave").onclick=()=>{
+    const amt = parseFloat(document.getElementById("expAmt").value);
+    if(!(amt>0)){ toast ? toast("Enter an amount") : alert("Enter an amount"); return; }
+    const dateVal = document.getElementById("expDate").value;
+    if(!dateVal){ (typeof toast!=="undefined"?toast:alert)("Pick a date"); return; }
+    const o = { id: expEditingId||undefined, type: expFormType, amount: amt,
+      account: document.getElementById("expAcct").value,
+      date: dateVal,
+      item: document.getElementById("expItem").value.trim() };
+    if(!o.account){ toast("Add or restore an account first"); return; }
+    if(expFormType==="transfer"){ o.toAccount=document.getElementById("expTo").value;
+      if(o.account===o.toAccount){ (toast?toast:alert)("Pick two different accounts"); return; } }
+    else { o.category=document.getElementById("expCat").value; o.tags=[...picked]; }
+    if (expActiveCap) o.capId = expActiveCap.id;
+    const wantSplit = expFormType==="expense" && !!(document.getElementById("expSplitAfter")&&document.getElementById("expSplitAfter").checked);
+    expSaveTxn(o); expEditingId=null;
+    if (expActiveCap) {
+      const cap = expActiveCap; expActiveCap = null;
+      expCaptures = expCaptures.filter(c => c.id !== cap.id);
+      deleteCapture(cap.path, cap.sha).catch(()=>{});   // best-effort; dedup by capId covers a failure
+    }
+    expState.selDay = Number(o.date.slice(8,10)); expState.ym = o.date.slice(0,7); saveExpState();
+    rExpenses();
+    if(wantSplit) setTimeout(()=>expOpenSplitPrefilled(o.item, amt), 60); // one flow: meal saved → split it
+  };
+}
+// Open the Owed panel's split form pre-filled from a just-saved expense (the one-flow meal split).
+function expOpenSplitPrefilled(meal, total){
+  const host=document.getElementById("exp"); if(!host) return;
+  const sb=host.querySelector("#owedSplitBtn"), sf=host.querySelector("#owedSplitForm");
+  if(!sb||!sf) return;
+  if(!sf.innerHTML){ sf.innerHTML=expSplitFormHtml(); sb.textContent="cancel"; expWireSplit(sf); }
+  const mi=sf.querySelector("#spMeal"), ti=sf.querySelector("#spTotal");
+  if(mi) mi.value=meal||"";
+  if(ti){ ti.value=(Number(total)||0).toFixed(2); ti.dispatchEvent(new Event("input")); }
+  sf.scrollIntoView({behavior:"smooth",block:"center"});
+  const firstChip=sf.querySelector(".spchip:not(.me)"); if(firstChip) firstChip.focus();
+}
+
+// Variant B date picker: a one-tap strip of recent days (Today, Yesterday, then 3-char weekdays)
+// with a "More" button that expands an inline month grid. Writes the chosen YYYY-MM-DD to the
+// hidden #expDate input so the Save handler is unchanged.
+function expBuildDatePicker(initialIso){
+  const hidden=document.getElementById("expDate"), strip=document.getElementById("expStrip"),
+        pop=document.getElementById("expCalPop"), curLbl=document.getElementById("expDpCur");
+  if(!hidden || !strip || !pop) return;
+  const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW3=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const p2=n=>String(n).padStart(2,"0");
+  const toIso=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  const fromIso=s=>{ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+  const today=new Date(); today.setHours(0,0,0,0);
+  let sel = initialIso ? fromIso(initialIso) : new Date(today);
+  let view = new Date(sel.getFullYear(), sel.getMonth(), 1);
+  const pretty=d=>`${DOW3[d.getDay()]}, ${d.getDate()} ${MO[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;
+
+  function setSel(d){ sel=d; hidden.value=toIso(d); paint(); }
+  function buildStrip(){
+    let html="";
+    for(let i=0;i<7;i++){ const dt=new Date(today); dt.setDate(dt.getDate()-i);
+      const lbl = i===0?"Today" : i===1?"Yesterday" : DOW3[dt.getDay()];
+      html+=`<div class="dp-card" data-iso="${toIso(dt)}"><div class="dw">${lbl}</div><div class="dd">${dt.getDate()}</div></div>`;
+    }
+    html+=`<button type="button" class="dp-more" id="expDpMore"><span aria-hidden="true">▦</span>More</button>`;
+    strip.innerHTML=html;
+    strip.querySelectorAll(".dp-card").forEach(c=>{kb(c);c.onclick=()=>{ setSel(fromIso(c.dataset.iso)); pop.classList.remove("show"); };});
+    document.getElementById("expDpMore").onclick=()=>{ view=new Date(sel.getFullYear(),sel.getMonth(),1); pop.classList.toggle("show"); if(pop.classList.contains("show")) buildGrid(); };
+  }
+  function buildGrid(){
+    const y=view.getFullYear(), m=view.getMonth();
+    const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate();
+    let cells="";
+    for(let i=0;i<first;i++) cells+=`<div class="dp-day pad"></div>`;
+    for(let d=1;d<=dim;d++){ const dt=new Date(y,m,d);
+      const cls=["dp-day", toIso(dt)===toIso(today)?"today":"", toIso(dt)===toIso(sel)?"sel":""].filter(Boolean).join(" ");
+      cells+=`<div class="${cls}" data-d="${d}">${d}</div>`;
+    }
+    pop.innerHTML=`<div class="dp-head"><button type="button" data-nav="-1" aria-label="Previous month">‹</button><span class="mo">${MO[m]} ${y}</span><button type="button" data-nav="1" aria-label="Next month">›</button></div>
+      <div class="dp-dow">${DOW3.map(x=>`<span>${x[0]}</span>`).join("")}</div>
+      <div class="dp-days">${cells}</div>`;
+    pop.querySelectorAll("[data-nav]").forEach(b=>b.onclick=()=>{ view=new Date(y,m+Number(b.dataset.nav),1); buildGrid(); });
+    pop.querySelectorAll(".dp-day[data-d]").forEach(c=>{kb(c);c.onclick=()=>{ setSel(new Date(y,m,Number(c.dataset.d))); pop.classList.remove("show"); };});
+    pop.onkeydown=e=>{ if(e.key==="Escape"){ e.stopPropagation(); pop.classList.remove("show"); const mb=document.getElementById("expDpMore"); if(mb)mb.focus(); } };
+  }
+  function paint(){
+    strip.querySelectorAll(".dp-card").forEach(c=>c.classList.toggle("on", c.dataset.iso===hidden.value));
+    if(curLbl) curLbl.innerHTML=`Selected · <b>${pretty(sel)}</b>`;
+    if(pop.classList.contains("show")) buildGrid();
+  }
+  hidden.value=toIso(sel);
+  buildStrip(); paint();
+}
+
+function expTxRow(t){
+  if(t.type==="transfer") return `
+    <div class="tx xfer" data-edit="${t.id}"><div class="cat" aria-hidden="true">🔁</div>
+      <div class="mid"><div class="it">${expAcctHtml(t.account)} → ${expAcctHtml(t.toAccount)}</div>
+      <div class="sub"><span class="pay">${expAcctHtml(t.account)}</span> <span aria-hidden="true">→</span> <span class="pay">${expAcctHtml(t.toAccount)}</span> transfer</div></div>
+      <div class="amt">${expMoney(t.amount)}</div></div>`;
+  const tags = (t.tags||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join(" ");
+  const sign = t.type==="income" ? "in" : "out";
+  const pfx = t.type==="income" ? "+" : "−";
+  return `<div class="tx" data-edit="${t.id}"><div class="cat" aria-hidden="true">${expCatIcon(t.category)}</div>
+    <div class="mid"><div class="it">${esc(t.item||t.category||"")}</div>
+    <div class="sub"><span class="pay">${expAcctHtml(t.account)}</span> ${esc(t.category||"")} ${tags}</div></div>
+    <div class="amt ${sign}">${pfx}${(+t.amount||0).toFixed(2)}</div></div>`;
+}
+
+// Drill-down: all of a category's transactions this month — its expenses + the paybacks that offset it.
+function expShowCategory(cat){
+  const mon = expTxns().filter(t=>t.date && t.date.slice(0,7)===expState.ym);
+  const exps = mon.filter(t=>t.type==="expense" && (t.category||"Others")===cat);
+  const backs = mon.filter(t=>t.type==="income" && t.offset===cat);
+  const rows = exps.concat(backs).sort((a,b)=> a.date<b.date?1 : a.date>b.date?-1 : 0);
+  const gross = exps.reduce((s,t)=>s+(+t.amount||0),0);
+  const back = backs.reduce((s,t)=>s+(+t.amount||0),0);
+  const list = rows.length ? rows.map(expTxRow).join("") : `<div class="empty" style="padding:22px;text-align:center;color:var(--faint)">No transactions.</div>`;
+  let host = document.getElementById("expCatModal");
+  if(!host){ host=document.createElement("div"); host.id="expCatModal"; (document.getElementById("exp")||document.body).appendChild(host); }
+  host.innerHTML = `<div class="emBack"></div>
+    <div class="emCard" role="dialog" aria-modal="true" aria-label="${esc(cat)} transactions this month">
+      <div class="emHead"><span class="emTitle">${expCatIcon(cat)} ${esc(cat)}</span><button class="emX" aria-label="Close">✕</button></div>
+      <div class="emSum">${expMoney(gross-back)} net${back>0.005?` &nbsp;·&nbsp; ${expMoney(gross)} spent − ${expMoney(back)} paid back`:``} &nbsp;·&nbsp; ${exps.length} item${exps.length===1?"":"s"}</div>
+      <div class="ledger">${list}</div>
+    </div>`;
+  host.style.display="block";
+  // proper dialog behavior: remember the opener, move focus in, trap Tab inside, restore on close
+  const opener=document.activeElement;
+  const close=()=>{ host.style.display="none"; host.innerHTML=""; document.removeEventListener("keydown",onKey);
+    if(opener&&opener.focus)try{opener.focus();}catch(_){} };
+  const focusables=()=>[...host.querySelectorAll(".emX,.tx[data-edit]")];
+  const onKey=(e)=>{
+    if(e.key==="Escape"){ close(); return; }
+    if(e.key==="Tab"){
+      const f=focusables(); if(!f.length) return;
+      const i=f.indexOf(document.activeElement);
+      if(e.shiftKey&&(i<=0)){ e.preventDefault(); f[f.length-1].focus(); }
+      else if(!e.shiftKey&&(i===f.length-1||i<0)){ e.preventDefault(); f[0].focus(); }
+    }
+  };
+  document.addEventListener("keydown",onKey);
+  host.querySelector(".emBack").onclick=close;
+  host.querySelector(".emX").onclick=close;
+  // rows are edit shortcuts — reachable by keyboard too (Tab + Enter), not just tap
+  host.querySelectorAll(".tx[data-edit]").forEach(r=>{
+    r.tabIndex=0; r.setAttribute("role","button");
+    const go=()=>{ close(); expEditingId=r.dataset.edit; const t=expTxns().find(x=>x.id===expEditingId); if(t)expFormType=t.type; expActiveCap=null; expRenderForm(); };
+    r.onclick=go; r.onkeydown=(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } };
+  });
+  host.querySelector(".emX").focus();
+}
+
+// ---------- "Owed to me" — who still owes you (outstanding = IOU shares − paybacks, derived) ----------
+const OWED_COLORS = ["#ff5d52","#ff9f45","#43e0a0","#9a7bff","#ff4d8d","#37d3a0","#00e6e6","#ffb454"];
+function owedColor(n){ let h=0; for(let i=0;i<n.length;i++) h=(h*31+n.charCodeAt(i))>>>0; return OWED_COLORS[h%OWED_COLORS.length]; }
+function owedInitials(s){ return (s||"?").trim().slice(0,2).toUpperCase(); }
+function expOwedRow(r){
+  const part = r.paid>0.005 ? `<span class="opart">${expMoney(r.paid)} paid</span>` : "";
+  const m0 = r.meals && r.meals[0];
+  const meal = m0 ? `${esc(m0.meal||"meal")}${m0.date?" · "+esc(m0.date):""}${r.meals.length>1?" · +"+(r.meals.length-1):""}` : "";
+  const detail = (r.meals||[]).map(m=>`<div class="odrow"><span>${esc(m.meal||"meal")}${m.date?" · "+esc(m.date):""}</span><span class="odr"><span class="num">${expMoney(m.amount)}</span><button class="odx" data-oid="${esc(m.id)}" aria-label="Remove">×</button></span></div>`).join("");
+  return `<div class="orow" data-person="${esc(r.person)}">
+    <span class="oav" style="background:${owedColor(r.person)}">${owedInitials(r.person)}</span>
+    <div class="omid"><div class="onm">${esc(r.person)}</div><div class="ometa"><span>${meal}</span>${part}</div></div>
+    <span class="oamt num">${expMoney(r.outstanding)}</span></div>
+    <div class="odetail" data-for="${esc(r.person)}" style="display:none">${detail}</div>`;
+}
+function expOwedPanel(){
+  const owed = expOwed(), rows = ExpensesCalc.owedByPerson(owed, expTxns());
+  const total = rows.reduce((s,r)=>s+r.outstanding,0);
+  const body = rows.length ? rows.map(expOwedRow).join("")
+    : `<div class="oempty">${owed.length?"Everyone's paid you back 🎉":"Nothing owed to you yet — fronted a group meal? Hit “+ split a meal”."}</div>`;
+  return `<div class="card owedsec">
+    <div class="owedhead"><span class="oh"><span aria-hidden="true">🤝</span> Owed to me</span><span class="obig num">${expMoney(total)}</span></div>
+    <div class="owedrows">${body}</div>
+    <button class="mini owedadd" id="owedSplitBtn">+ split a meal</button>
+    <div id="owedSplitForm"></div>
+  </div>`;
+}
+function expSplitFormHtml(){
+  const chips = expFriends().map(f=>`<button class="spchip" data-f="${esc(f)}" aria-pressed="false"><span class="spdot"></span>${esc(f)}</button>`).join("");
+  return `<div class="splitbox">
+    <div class="sfrow"><div class="sf"><label>What was it?</label><input id="spMeal" placeholder="e.g. Mookata" autocomplete="off"/></div>
+      <div class="sf sfsm"><label>Total you paid</label><input id="spTotal" inputmode="decimal" placeholder="0.00" autocomplete="off"/></div></div>
+    <div class="sf"><label>Who shared it? · AA split</label>
+      <div class="spchips" id="spChips">${chips}<button class="spchip me" data-me="1" aria-pressed="true"><span class="spdot"></span>You</button></div>
+      <input id="spNew" class="spadd" placeholder="+ add someone not listed (Enter)" autocomplete="off"/></div>
+    <div class="spcalc"><span class="spk">Split <b id="spN">1</b> ways · you cover your own</span><span class="speach num" id="spEach">—</span></div>
+    <button class="go2" id="spGo" disabled>Add IOUs</button>
+  </div>`;
+}
+function expWireOwed(host){
+  host.querySelectorAll(".owedrows .orow[data-person]").forEach(r=>{kb(r);r.setAttribute("aria-expanded","false");r.onclick=()=>{
+    const d=host.querySelector('.odetail[data-for="'+CSS.escape(r.dataset.person)+'"]');
+    if(d){ const show=d.style.display==="none"; d.style.display=show?"block":"none"; r.setAttribute("aria-expanded",show); }
+  };});
+  host.querySelectorAll(".odx[data-oid]").forEach(x=>x.onclick=(e)=>{ e.stopPropagation();
+    const id=x.dataset.oid; saveExpOwed(expOwed().filter(o=>o.id!==id));
+    const tb=expTomb(); tb[id]=Date.now(); saveExpTomb(tb); expQueueSync(); rExpenses(); });
+  const sb=host.querySelector("#owedSplitBtn"), sf=host.querySelector("#owedSplitForm");
+  if(sb&&sf) sb.onclick=()=>{ if(sf.innerHTML){ sf.innerHTML=""; sb.textContent="+ split a meal"; return; }
+    sf.innerHTML=expSplitFormHtml(); sb.textContent="cancel"; expWireSplit(sf); const mi=sf.querySelector("#spMeal"); if(mi) mi.focus(); };
+}
+function expWireSplit(sf){
+  const picked=new Set(); let includeMe=true;
+  const nEl=sf.querySelector("#spN"), eachEl=sf.querySelector("#spEach"), goEl=sf.querySelector("#spGo"), totalEl=sf.querySelector("#spTotal"), mealEl=sf.querySelector("#spMeal");
+  const recalc=()=>{ const n=picked.size+(includeMe?1:0); nEl.textContent=n||"—"; const tot=parseFloat(totalEl.value)||0; const each=n?tot/n:0;
+    eachEl.textContent = each>0 ? expMoney(each)+" each" : "—"; goEl.disabled=!(picked.size>0 && tot>0); };
+  const bindChip=(c)=>{ c.onclick=()=>{ if(c.dataset.me){ includeMe=!includeMe; c.setAttribute("aria-pressed",includeMe);} else { const f=c.dataset.f; picked.has(f)?picked.delete(f):picked.add(f); c.setAttribute("aria-pressed",picked.has(f)); } recalc(); }; };
+  sf.querySelectorAll(".spchip").forEach(bindChip);
+  const addNew=sf.querySelector("#spNew");
+  addNew.onkeydown=(e)=>{ if(e.key!=="Enter") return; e.preventDefault(); const name=addNew.value.trim(); if(!name) return;
+    const chip=document.createElement("button"); chip.className="spchip"; chip.dataset.f=name; chip.setAttribute("aria-pressed","true"); chip.innerHTML='<span class="spdot"></span>'+esc(name);
+    sf.querySelector(".spchip.me").before(chip); bindChip(chip); picked.add(name); addNew.value=""; recalc(); };
+  totalEl.oninput=recalc;
+  goEl.onclick=()=>{ const n=picked.size+(includeMe?1:0), tot=parseFloat(totalEl.value)||0; if(!n||!(tot>0)||!picked.size) return;
+    const each=Math.round(tot/n*100)/100, meal=mealEl.value.trim()||"Shared meal", date=new Date().toLocaleDateString("en-SG",{day:"numeric",month:"short"});
+    const arr=expOwed(); picked.forEach(p=>arr.push({id:"o"+Date.now()+Math.random().toString(36).slice(2,5),person:p,amount:each,meal,date,mtime:Date.now()}));
+    saveExpOwed(arr); expQueueSync(); rExpenses(); };
+}
+function expRenderBody(){
+  const body = document.getElementById("expBody");
+  const txns = expTxns();
+  const [Y,Mo] = expState.ym.split("-").map(Number);
+  const monName = new Date(Y,Mo-1,1).toLocaleString("en-SG",{month:"long"});
+  const days = new Date(Y, Mo, 0).getDate();
+  const firstDow = new Date(Y, Mo-1, 1).getDay(); // Sun-first pad count (0=Sun)
+  const dt = ExpensesCalc.dayTotals(txns, expState.ym);
+  const maxSpend = Math.max(1, ...Object.values(dt).map(x=>x.spent));
+  const todayStr = iso(new Date());
+
+  // cents live in their own span: a phone-width day cell hides them (CSS) rather than clipping the column
+  const expCellAmt = (v) => { const [dol,c] = v.toFixed(2).split("."); return `${dol}<span class="cents">.${c}</span>`; };
+  let cells = "";
+  for(let i=0;i<firstDow;i++) cells += `<div class="cell pad"></div>`;
+  for(let d=1; d<=days; d++){
+    const info = dt[d]; const spent = info?info.spent:0;
+    const dateStr = `${expState.ym}-${String(d).padStart(2,"0")}`;
+    const cls = ["cell"];
+    if(dateStr===todayStr) cls.push("today");
+    if(expState.selDay===d) cls.push("sel");
+    if(spent===0) cls.push("zero");
+    const fill = spent>0 ? `<div class="fill" style="height:${8+Math.min(spent/maxSpend,1)*70}%"></div>` : "";
+    const dot = info&&info.income ? `<span class="inc"></span>` : "";
+    cells += `<div class="${cls.join(" ")}" data-day="${d}">${fill}${dot}<div class="dn">${d}</div><div class="amt">${spent>0?expCellAmt(spent):"—"}</div></div>`;
+  }
+
+  // selected-day ledger
+  const sel = expState.selDay;
+  const dayTxns = sel ? txns.filter(t=>t.date===`${expState.ym}-${String(sel).padStart(2,"0")}`) : [];
+  const dayOut = dayTxns.filter(t=>t.type==="expense").reduce((s,t)=>s+(+t.amount||0),0);
+  const rows = dayTxns.length ? dayTxns.map(expTxRow).join("") : `<div class="empty" style="padding:22px;text-align:center;color:var(--faint)">No transactions ${sel?"this day":"— pick a day"}.</div>`;
+
+  // list-view: flat, date-grouped transaction list for the whole month (reuses .tx row markup)
+  let listBody = "";
+  if(expState.view==="list"){
+    const monTxns = txns.filter(t=>t.date && t.date.slice(0,7)===expState.ym);
+    const byDate = {};
+    monTxns.forEach(t=>{ (byDate[t.date]=byDate[t.date]||[]).push(t); });
+    const dates = Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+    listBody = dates.length ? dates.map(d=>{
+      const dn = Number(d.slice(8,10));
+      const label = new Date(Y,Mo-1,dn).toLocaleString("en-SG",{weekday:"short",day:"numeric",month:"short"});
+      return `<div class="gdate">${label}</div>` + byDate[d].map(expTxRow).join("");
+    }).join("") : `<div class="empty" style="padding:22px;text-align:center;color:var(--faint)">No transactions this month.</div>`;
+  }
+
+  // month-by-category summary
+  const catTot = ExpensesCalc.categoryTotals(txns, expState.ym);
+  const netTotal = catTot.reduce((s,c)=>s+c.amount,0);   // spend net of paybacks
+  const palette = ["#ff5d52","#ff9f45","#00ffff","#43e0a0","#9a7bff","#ff4d8d","#37d3a0","#8b8e9e"];
+  // Budget pace: green = under the elapsed-month pace line, amber = ahead of pace, red = over budget.
+  const _budgets = expBudgets();
+  const _dim = new Date(Y, Mo, 0).getDate();
+  const _isCurM = iso(new Date()).slice(0,7)===expState.ym;
+  const _frac = _isCurM ? new Date().getDate()/_dim : 1;  // month elapsed (past months = 100%)
+  const catCards = catTot.map((c,i)=>{
+    const _b = _budgets[c.category] && Number(_budgets[c.category].amount)>0 ? Number(_budgets[c.category].amount) : 0;
+    let bar, bsub="";
+    if(_b){
+      const pct = Math.min(100, Math.round(c.amount/_b*100));
+      const over = c.amount>_b, hot = !over && c.amount>_b*_frac;
+      const col = over ? "var(--red)" : hot ? "var(--warn)" : "var(--green)";
+      bar = `<div class="catbar bud"><i style="width:${pct}%;background:${col}"></i><s style="left:${Math.round(_frac*100)}%"></s></div>`;
+      bsub = `<div class="catback ${over?"bover":""}">${expMoney(c.amount)} of ${expMoney(_b)}${over?` · ${expMoney(c.amount-_b)} OVER`:""}</div>`;
+    } else {
+      bar = `<div class="catbar"><i style="width:${netTotal>0?Math.max(0,Math.round(c.amount/netTotal*100)):0}%;background:${palette[i%palette.length]}"></i></div>`;
+    }
+    return `
+    <div class="catcard" data-cat="${esc(c.category)}" role="button" tabindex="0" title="Show all ${esc(c.category)} transactions">
+      <span class="nm"><span aria-hidden="true">${expCatIcon(c.category)}</span> ${esc(c.category)}</span>
+      <span class="v">${expMoney(c.amount)}</span>
+      ${c.paidBack>0.005?`<div class="catback">−${expMoney(c.paidBack)} paid back</div>`:""}
+      ${bsub}
+      ${bar}
+    </div>`;}).join("");
+
+  body.innerHTML = `
+    <div class="main">
+      <div class="card" style="padding:16px 17px 18px">
+        <div class="calhead"><span class="mo">${monName} ${Y}</span>
+          <span class="nav"><button class="mini" id="expView">${expState.view==="cal"?"List":"Calendar"}</button><button class="navb" id="expPrev" title="Previous month" aria-label="Previous month">‹</button><button class="mini" id="expToday" title="Jump to the current month">Today</button><button class="navb" id="expNext" title="Next month" aria-label="Next month">›</button></span></div>
+        ${expState.view==="list" ? `<div class="glist" id="expList">${listBody}</div>` : `
+        <div class="dow"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+        <div class="grid" id="expGrid">${cells}</div>`}
+      </div>
+      <div class="rcol">
+        <div class="card" style="padding:16px 16px 17px">
+          <div class="dayhead"><span class="d">${sel?monName.slice(0,3)+" "+sel:"Select a day"}</span>
+            <span class="t">${sel?"−"+expMoney(dayOut):""}</span></div>
+          <div class="ledger">${rows}</div>
+        </div>
+        <div id="expForm"></div>
+      </div>
+    </div>
+    <div class="summary"><div class="h2">${monName} by category
+      <button class="mini" id="expBudBtn" title="Set monthly budgets per category" style="margin-left:8px"><span aria-hidden="true">✎</span> Budgets</button>
+      <span class="rule"></span>
+      <span style="color:var(--red);font-family:var(--disp)">${expMoney(netTotal)}</span></div>
+      <div class="cats">${catCards || '<div class="empty">No spending yet.</div>'}</div></div>`;
+
+  // wiring
+  const vb = document.getElementById("expView");
+  if(vb) vb.onclick = ()=>{ expState.view = expState.view==="cal" ? "list" : "cal"; saveExpState(); expRenderBody(); };
+  body.querySelectorAll("#expGrid .cell[data-day]").forEach(c=>{kb(c,false);c.onclick=()=>{
+    expState.selDay = Number(c.dataset.day); saveExpState(); expRenderBody();
+  };});
+  const shift = (delta)=>{ let [y,m]=expState.ym.split("-").map(Number); m+=delta; if(m<1){m=12;y--;} if(m>12){m=1;y++;} expState.ym=`${y}-${String(m).padStart(2,"0")}`; expState.selDay=null; saveExpState(); rExpenses(); };
+  const p=document.getElementById("expPrev"), n=document.getElementById("expNext"), tdy=document.getElementById("expToday");
+  if(p)p.onclick=()=>shift(-1); if(n)n.onclick=()=>shift(1);
+  if(tdy)tdy.onclick=()=>{ const now=new Date(); expState.ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`; expState.selDay=now.getDate(); saveExpState(); rExpenses(); };
+  body.querySelectorAll(".tx[data-edit]").forEach(r=>{kb(r);r.onclick=()=>{ expEditingId=r.dataset.edit; const t=expTxns().find(x=>x.id===expEditingId); if(t){expFormType=t.type;} expActiveCap = null; expRenderForm(); };});
+  body.querySelectorAll(".catcard[data-cat]").forEach(c=>{ const open=()=>expShowCategory(c.dataset.cat); c.onclick=open; c.onkeydown=(e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); open(); } }; });
+  const budBtn=document.getElementById("expBudBtn"); if(budBtn) budBtn.onclick=expEditBudgets;
+  document.querySelectorAll("#exp .bpaid[data-bill]").forEach(x=>x.onclick=(e)=>{e.stopPropagation();expMarkBillPaid(x.dataset.bill);});
+  document.querySelectorAll("#exp .bedit[data-bill]").forEach(x=>x.onclick=(e)=>{e.stopPropagation();expEditBill(x.dataset.bill);});
+  const billAdd=document.getElementById("expBillAdd"); if(billAdd) billAdd.onclick=()=>expEditBill(null);
+
+  expRenderForm();
+}
+
+// deterministic txn id so a double-tap can't double-log) and flags the bill paid.
+function expBillsRows(accts){
+  const bills = expBills();
+  const rows = Object.entries(bills).filter(([,b])=>!b.paid && !b.removed).sort((a,b)=>String(a[1].due).localeCompare(String(b[1].due)));
+  const acctName = (id)=>expAcctHtml(id);
+  const head = `<div class="billHead" style="display:flex;align-items:center;gap:8px">Upcoming bills <button class="mini" id="expBillAdd" style="margin-left:auto">+ Bill</button></div>`;
+  if(!rows.length) return `<div class="billsec">${head}</div>`;
+  return `<div class="billsec">${head}` + rows.map(([id,b])=>{
+    const n = dleft(b.due);
+    const chip = isNaN(n) ? `<span class="bchip">${esc(b.due||"?")}</span>`
+      : n<0 ? `<span class="bchip late">${-n}d overdue</span>`
+      : n===0 ? `<span class="bchip late">due today</span>`
+      : n<=7 ? `<span class="bchip soon">in ${n}d</span>`
+      : `<span class="bchip">${new Date(b.due).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>`;
+    return `<div class="billrow">
+      <span class="bl"><b>${esc(b.label)}</b> · ${esc(acctName(b.account))}${b.note?`<div class="bnote">${esc(b.note)}</div>`:""}</span>
+      <span class="ba">${expMoney(b.amount)}</span>${chip}
+      <button class="mini bedit" data-bill="${esc(id)}" title="Edit this bill">✎</button>
+      <button class="mini bpaid" data-bill="${esc(id)}" title="Log the payment (${esc(acctName(b.payFrom||expDefaultAccountId()))} → ${esc(acctName(b.account))}) and clear this bill">✓ Paid</button>
+    </div>`;
+  }).join("") + `</div>`;
+}
+function expMarkBillPaid(id){
+  const bills = {...expBills()}; const b = bills[id]; if(!b||b.paid) return;
+  const txns = expTxns();
+  const txId = "billpay-"+id;
+  const payFrom = Accounts.usable(expAcctLocal(), b.payFrom);
+  if(!payFrom){ toast("Add or restore an account to pay from first"); return; }
+  if(!txns.some(t=>t.id===txId)){
+    txns.push({ id:txId, type:"transfer", amount:Number(b.amount)||0, account:payFrom,
+      toAccount:b.account, item:b.label, category:"Bills", date:iso(new Date()), tags:[], mtime:Date.now() });
+    saveExpTxns(txns);
+  }
+  bills[id] = {...b, paid:true, mtime:Date.now()};
+  saveExpBills(bills); expQueueSync(); rExpenses();
+  toast(`Logged ${expMoney(b.amount)} payment · ${b.label}`);
+}
+
+// Bill editor: add / edit / delete an upcoming bill. Delete is a soft `removed` flag so the
+// sync merge (newest mtime per id) carries it to other devices.
+function expEditBill(id){
+  const dlg = document.getElementById("billdlg");
+  const bills = expBills(); const b = id ? bills[id] : null;
+  const accts = expAccounts(), assets = accts.filter(a=>!a.credit);
+  const opt = (list, sel) => list.map(a=>`<option value="${esc(a.id)}" ${a.id===sel?"selected":""}>${esc(a.name)}</option>`).join("");
+  const due = (b && b.due) || iso(new Date(Date.now()+7*864e5));
+  document.getElementById("billdlgT").textContent = b ? "Edit bill" : "New bill";
+  document.getElementById("billdlgBody").innerHTML = `
+    <div class="fld"><label>What</label><input id="billLabel" class="fake" value="${esc(b?b.label:"")}" placeholder="e.g. Phone plan"/></div>
+    <div class="frow" style="grid-template-columns:1fr 1fr">
+      <div class="fld"><label>Amount</label><input id="billAmt" class="fake" inputmode="decimal" value="${b?esc(String(b.amount)):""}" placeholder="0.00"/></div>
+      <div class="fld"><label>Due</label><input id="billDue" class="fake" type="date" value="${esc(due)}" style="color-scheme:dark"/></div>
+    </div>
+    <div class="frow" style="grid-template-columns:1fr 1fr">
+      <div class="fld"><label>Bill is on</label><select id="billAcct" class="fake">${opt(accts, b?b.account:(accts.find(a=>a.credit)||accts[0]||{}).id)}</select></div>
+      <div class="fld"><label>Pay from</label><select id="billFrom" class="fake">${opt(assets, b?b.payFrom:expDefaultAccountId())}</select></div>
+    </div>
+    <div class="fld"><label>Note (optional)</label><input id="billNote" class="fake" value="${esc(b?(b.note||""):"")}"/></div>`;
+  document.getElementById("billdlgD").style.display = b ? "" : "none";
+  document.getElementById("billdlgX").onclick = ()=>dlg.close();
+  document.getElementById("billdlgD").onclick = ()=>{ const all={...expBills()}; all[id]={...all[id], removed:true, mtime:Date.now()}; saveExpBills(all); dlg.close(); expQueueSync(); rExpenses(); toast("Bill removed"); };
+  document.getElementById("billdlgS").onclick = ()=>{
+    const label=document.getElementById("billLabel").value.trim(), amount=parseFloat(document.getElementById("billAmt").value), dueV=document.getElementById("billDue").value;
+    if(!label){ toast("Give the bill a name"); return; } if(!(amount>0)){ toast("Enter an amount"); return; } if(!dueV){ toast("Pick a due date"); return; }
+    if(!document.getElementById("billAcct").value||!document.getElementById("billFrom").value){ toast("Add or restore an account first"); return; }
+    const all={...expBills()}; const key = id || ("b"+Date.now()+Math.random().toString(36).slice(2,6));
+    all[key] = {...(all[key]||{}), label, amount, due:dueV, account:document.getElementById("billAcct").value, payFrom:document.getElementById("billFrom").value, note:document.getElementById("billNote").value.trim(), paid:false, removed:false, mtime:Date.now()};
+    saveExpBills(all); dlg.close(); expQueueSync(); rExpenses(); toast(id?"Bill updated":"Bill added");
+  };
+  dlg.showModal();
+}
+
+// Budget editor: every known category (config + this month's + already-budgeted), one amount each.
+function expEditBudgets(){
+  const cur = expBudgets();
+  const names = new Set((EXP_CFG.categories||[]).map(c=>c.id));
+  for (const c of ExpensesCalc.categoryTotals(expTxns(), expState.ym)) names.add(c.category);
+  for (const k in cur) names.add(k);
+  const rows = [...names].map(n=>{
+    const v = cur[n] && Number(cur[n].amount)>0 ? cur[n].amount : "";
+    return `<div class="brow"><label>${expCatIcon(n)} ${esc(n)}</label><input data-bcat="${esc(n)}" inputmode="decimal" placeholder="—" value="${v}"/></div>`;
+  }).join("");
+  document.getElementById("bdlgRows").innerHTML = rows;
+  document.getElementById("bdlgS").onclick = ()=>{
+    const next = {...expBudgets()};
+    document.querySelectorAll("#bdlgRows input[data-bcat]").forEach(inp=>{
+      const k = inp.dataset.bcat, raw = inp.value.trim(), amt = raw==="" ? 0 : (parseFloat(raw)||0);
+      const old = next[k] ? Number(next[k].amount)||0 : 0;
+      if (amt !== old) next[k] = { amount: amt, mtime: Date.now() };   // 0 = budget removed (still syncs)
+    });
+    saveExpBudgets(next); bdlg.close(); expQueueSync(); rExpenses();
+  };
+  bdlg.showModal();
+}
+
+// Fetch pending captures from the vault. You already confirm each one on the phone (the
+// Shortcut's Create), so a capture with a usable amount is auto-posted to your default
+// account here — no second in-app Create. Only captures we can't resolve an amount for fall
+// through to the manual review inbox. capId dedup + pendingCaptures make this idempotent.
+async function expRefreshCaptures() {
+  let pending;
+  try { pending = ExpensesCapture.pendingCaptures(await listCaptures(), expTxns()).filter((f) => !expDismissed.has(f.id)); }
+  catch (_) { return; }
+  const cats = EXP_CFG.categories || [];
+  const accts = expAccounts();
+  const defAcct = expDefaultAccountId();
+  const added = [], review = [];
+  for (const c of pending) {
+    const d = ExpensesCapture.describeCapture(c.text, cats);   // now defaults to today for relative dates
+    const amount = c.amount != null ? c.amount : d.amount;
+    if (amount > 0 && defAcct) {
+      // The Shortcut tags each capture income/expense (bank detail screens hide the +/-).
+      const type = c.type === "income" ? "income" : "expense";
+      const catList = type === "income" ? (EXP_CFG.incomeCategories || []) : cats;
+      const capCat = c.category && catList.some((x) => x.id === c.category) ? c.category : null;
+      const category = capCat || (type === "expense" ? d.categoryId : null) || (catList[0] && catList[0].id) || "";
+      const o = { type, amount, item: (c.merchant || d.merchant || ""),
+        category, account: defAcct, date: c.date || d.date || iso(new Date()), tags: [], capId: c.id };
+      expSaveTxn(o); added.push(o);
+      deleteCapture(c.path, c.sha).catch(() => {});
+    } else { review.push(c); }
+  }
+  const key = (a) => a.map((c) => c.id).sort().join(",");
+  const changed = added.length || key(review) !== key(expCaptures);
+  expCaptures = review;
+  if (added.length) {
+    const tot = added.reduce((s, o) => s + o.amount, 0);
+    const last = added[added.length - 1];
+    if (added.length === 1) { expState.selDay = Number(last.date.slice(8, 10)); expState.ym = last.date.slice(0, 7); saveExpState(); }
+    if (typeof toast !== "undefined") toast(`Added ${added.length} capture${added.length > 1 ? "s" : ""} · $${tot.toFixed(2)}`);
+  }
+  if (changed && section === "expenses") rExpenses();
+}
+async function expDismissCapture(id) {
+  const c = expCaptures.find(x => x.id === id); if (!c) return;
+  expDismissed.add(id);
+  expCaptures = expCaptures.filter(x => x.id !== id);
+  if (section === "expenses") rExpenses();
+  try { await deleteCapture(c.path, c.sha); } catch (_) { expDismissed.delete(id); }
+}
+// A capture rendered as an editable confirm card: parsed merchant/amount + suggested
+// category & account, all tweakable before you tap Create.
+function expCapCard(c) {
+  const cats = EXP_CFG.categories || [];
+  const accts = expAccounts();
+  const d = ExpensesCapture.describeCapture(c.text, cats);
+  // Trust what the Shortcut sent (incl. any on-phone edits); fall back to the OCR parse when absent.
+  const merchant = c.merchant ? c.merchant : (d.merchant || "");
+  const amount = c.amount != null ? c.amount : d.amount;
+  const capCat = c.category && cats.some(x => x.id === c.category) ? c.category : null;
+  const selCat = capCat || d.categoryId || (cats[0] && cats[0].id) || "";
+  const catObj = cats.find(x => x.id === selCat);
+  const icon = catObj ? catObj.icon : "💸";
+  const dateVal = c.date || d.date || iso(new Date());
+  const amtVal = amount != null ? amount.toFixed(2) : "";
+  const catOpts = cats.map(x => `<option value="${esc(x.id)}" ${x.id===selCat?"selected":""}>${esc(x.icon)} ${esc(x.id)}</option>`).join("");
+  const acctOpts = accts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+  return `<div class="expCap" data-cap="${esc(c.id)}">
+    <div class="expCapTop">
+      <div class="expCapIcon" data-capicon>${icon}</div>
+      <input class="expCapItem" data-capitem value="${esc(merchant)}" placeholder="What was it?"/>
+      <span class="expCapAmt">−$<input data-capamt inputmode="decimal" value="${esc(amtVal)}" placeholder="0.00"/></span>
+    </div>
+    <div class="expCapRow">
+      <select data-capcat>${catOpts}</select>
+      <select data-capacct>${acctOpts}</select>
+      <input type="date" data-capdate value="${esc(dateVal)}"/>
+    </div>
+    <div class="expCapBtns">
+      <button class="expCapDismiss" data-capdismiss>Dismiss</button>
+      <button class="expCapCreate" data-capcreate>Create</button>
+    </div>
+  </div>`;
+}
+function expCreateFromCard(id, card) {
+  const amt = parseFloat(card.querySelector("[data-capamt]").value);
+  if (!(amt > 0)) { (typeof toast !== "undefined" ? toast : alert)("Enter an amount"); return; }
+  const o = { type: "expense", amount: amt,
+    item: card.querySelector("[data-capitem]").value.trim(),
+    category: card.querySelector("[data-capcat]").value,
+    account: card.querySelector("[data-capacct]").value,
+    date: card.querySelector("[data-capdate]").value || iso(new Date()),
+    tags: [], capId: id };
+  if (!o.account) { toast("Add or restore an account first"); return; }
+  const cap = expCaptures.find(x => x.id === id);
+  expSaveTxn(o);
+  expCaptures = expCaptures.filter(x => x.id !== id);
+  if (cap) deleteCapture(cap.path, cap.sha).catch(() => {});
+  expState.selDay = Number(o.date.slice(8, 10)); expState.ym = o.date.slice(0, 7); saveExpState();
+  rExpenses();
+}
+
+function rExpenses(){
+  expActiveCap = null;   // any full re-render is a non-confirm entry: drop stale capture-confirm state
+  if(expNeedsSetup()){ expRenderSetup("first"); return; } // a fresh device with a token pulls the vault → re-renders into the dashboard
+  const host = app; // module-global content host (index.html line 941)
+  const accts = expAccounts(), txns = expTxns();
+  const bal = ExpensesCalc.balances(accts, txns);
+  // Market value (server-written) replaces cost for valued accounts — display + totals only.
+  const _vb = ExpensesCalc.valuedBalances ? ExpensesCalc.valuedBalances(bal, expValuations(), iso(new Date())) : { balances: bal, valued: {} };
+  const shown = _vb.balances, valued = _vb.valued;
+  const mt = ExpensesCalc.monthTotals(txns, expState.ym);
+  const low = new Set(ExpensesCalc.accountsBelowLine(accts, txns));
+  const [Y,Mo] = expState.ym.split("-");
+  const monLabel = new Date(Y, Mo-1, 1).toLocaleString("en-SG",{month:"short"});
+
+  const assetAccts = accts.filter(a=>!a.credit), creditAccts = accts.filter(a=>a.credit);
+  const assets = assetAccts.reduce((s,a)=>s+(shown[a.id]||0),0);
+  const owed = creditAccts.reduce((s,a)=>s-(bal[a.id]||0),0); // debts are negative balances → positive owed
+  const acctCards = assetAccts.map(a => `
+    <div class="acct ${low.has(a.id)?"low":""}">
+      <div class="an"><span class="ic" aria-hidden="true" style="background:${esc(a.colour||"#555")}">${esc(a.icon||a.name[0])}</span>${esc(a.name)}</div>
+      <div class="bal">${expMoney(shown[a.id])}</div>
+      <div class="meta${valued[a.id]?" vmeta":""}">${valued[a.id]
+        ? `<span class="vasof${valued[a.id].stale?" stale":""}">as of ${pd(valued[a.id].asOf).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}${valued[a.id].stale?" · stale":""}</span><br>put in ${expMoney(valued[a.id].cost)} · <span class="${valued[a.id].gain<0?"vloss":"vgain"}">${valued[a.id].gain<0?"−":"+"}${expMoney(Math.abs(valued[a.id].gain))} (${valued[a.id].gain<0?"":"+"}${valued[a.id].pct}%)</span>`
+        : (low.has(a.id)?"⚠ below your warn line":"&nbsp;")}</div>
+    </div>`).join("");
+  const creditCards = creditAccts.map(a => {
+    const ow = -(bal[a.id]||0), lim = Number(a.limit)||0;
+    const pct = lim>0 ? Math.max(0,Math.min(100, ow/lim*100)) : 0;
+    return `<div class="acct credit">
+      <div class="an"><span class="ic" aria-hidden="true" style="background:${esc(a.colour||"#555")}">${esc(a.icon||a.name[0])}</span>${esc(a.name)}</div>
+      <div class="bal owe">${ow>0.005?"−"+expMoney(ow):expMoney(0)}</div>
+      <div class="meta">${expMoney(ow)} of ${expMoney(lim)}${lim?` · ${expMoney(lim-ow)} left`:""}</div>
+      ${a.note?`<div class="cnote">${esc(a.note)}</div>`:""}
+      ${lim?`<div class="limitbar"><i style="width:${pct}%"></i></div>`:""}
+    </div>`;
+  }).join("");
+
+  host.innerHTML = `<div id="exp">
+    <div class="netrow">
+      <div class="card net">
+        <span class="ey">Total across accounts</span>
+        <span class="big">${expMoney(assets)}</span>
+        <div class="mstats">
+          <div class="ms"><span class="msl">Spent · ${monLabel}</span><span class="msv out">−${expMoney(mt.spent)}</span></div>
+          <div class="ms"><span class="msl">Income · ${monLabel}</span><span class="msv in">+${expMoney(mt.income)}</span></div>
+          <div class="ms"><span class="msl">Net · ${monLabel}</span><span class="msv">${mt.net<0?"−":"+"}${expMoney(Math.abs(mt.net))}</span></div>
+        </div>
+        ${(()=>{ // glance insights: pace · streak · same-window vs last month.
+          // Guarded: right after a deploy the SW can still serve the PREVIOUS cached
+          // expenses-calc.js for one load — degrade to no line, never a broken tab.
+          if(typeof ExpensesCalc.monthInsights!=="function") return "";
+          try{
+            const ins=ExpensesCalc.monthInsights(txns, expState.ym, iso(new Date()));
+            const diff=ins.spentToDate-ins.prevSpentToDate;
+            const [py,pm]=ins.prevYm.split("-").map(Number);
+            const pLab=new Date(py,pm-1,1).toLocaleString("en-SG",{month:"short"});
+            const cmp=Math.abs(diff)<0.005?`level with ${pLab}`:`<b class="${diff<0?"good":"warm"}">${diff<0?"−":"+"}${expMoney(Math.abs(diff))}</b> vs ${pLab} 1–${ins.upto}`;
+            return `<div class="insline">≈ ${expMoney(ins.dailyAvg)}/day${ins.noSpendStreak>1?` · ${ins.noSpendStreak}-day no-spend streak`:""} · ${cmp}</div>`;
+          }catch(_){ return ""; }
+        })()}
+        <div class="expToolbar" style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px">
+            <button class="mini" id="expExportBtn" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span aria-hidden="true">⭳</span> Export</button>
+            <button class="mini" id="expImportBtn" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span aria-hidden="true">⭱</span> Import</button>
+            <button class="mini" id="expEditBal" title="Add, rename, archive accounts; starting balances; warn lines" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span aria-hidden="true">✎</span> Accounts</button>
+            <button class="mini" id="expVaultBtn" title="Vault settings: GitHub username, repo, token" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span aria-hidden="true">⚙</span> Vault</button>
+            <input type="file" accept="application/json" id="expImportInp" style="display:none"/>
+          </div>
+          <div style="display:flex;justify-content:flex-end">${expSyncPill()}</div>
+        </div>
+        ${expCaptures.length ? `<div class="expInbox">
+          <div class="expInboxHead">📸 ${expCaptures.length} to review</div>
+          ${expCaptures.map(expCapCard).join("")}
+        </div>` : ""}
+      </div>
+      <div class="accts">${acctCards}</div>
+    </div>
+    ${creditAccts.length ? `<div class="card creditsec">
+      <div class="creditHead"><span aria-hidden="true">💳</span> Credit / BNPL <span class="owe">Owe ${expMoney(owed)}</span></div>
+      <div class="accts">${creditCards}</div>
+      ${expBillsRows(accts)}
+    </div>` : ""}
+    ${expOwedPanel()}
+    <div id="expBody"></div>
+  </div>`;
+  const exBtn=document.getElementById("expExportBtn"); if(exBtn) exBtn.onclick=expExport;
+  const imInp=document.getElementById("expImportInp"); if(imInp) imInp.onchange=(e)=>{ if(e.target.files[0]) expImport(e.target.files[0]); e.target.value=""; };
+  const imBtn=document.getElementById("expImportBtn"); if(imBtn) imBtn.onclick=()=>imInp.click();
+  const ebBtn=document.getElementById("expEditBal"); if(ebBtn) ebBtn.onclick=()=>expRenderSetup("manage");
+  const vbBtn=document.getElementById("expVaultBtn"); if(vbBtn) vbBtn.onclick=expVaultSettings;
+  host.querySelectorAll(".expCap").forEach(card => {
+    const id = card.dataset.cap;
+    const catSel = card.querySelector("[data-capcat]"), icon = card.querySelector("[data-capicon]");
+    if (catSel && icon) catSel.onchange = () => { const co=(EXP_CFG.categories||[]).find(x=>x.id===catSel.value); icon.textContent = co?co.icon:"💸"; };
+    card.querySelector("[data-capdismiss]").onclick = () => expDismissCapture(id);
+    card.querySelector("[data-capcreate]").onclick = () => expCreateFromCard(id, card);
+  });
+  expWireOwed(host);
+  expWireSyncPill(host);
+  expRenderBody();
+  expSync(true);
+  expRefreshCaptures();
+}
+
+// ---------- boot ----------
+(async function boot(){
+  EXP_CFG = await fJson("expenses.json", EXP_CFG);
+  expMigrate();
+  rExpenses();
+  expSync(true).then(()=>expRefreshCaptures());
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"){ expSync(true).then(()=>expRefreshCaptures()); } });
+  window.addEventListener("focus",()=>expSync(true));
+  window.addEventListener("online",()=>expSync(true));
+  setInterval(()=>{ if(document.visibilityState==="visible") expSync(true); }, 90000);
+})();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+</script>
+</body>
+</html>
