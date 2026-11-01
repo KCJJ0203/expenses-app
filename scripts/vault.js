@@ -7,18 +7,27 @@
 
   const REPO = "expenses-vault";
 
+  // The template author's own account holds his real ledger. The public demo copy of this app
+  // runs on that same github.io host, so it must never read or write a vault under that owner.
+  const BLOCKED_OWNERS = ["kcjj0203"];
+  function isBlocked(cfg) {
+    return !!cfg && BLOCKED_OWNERS.indexOf(String(cfg.owner || "").trim().toLowerCase()) >= 0;
+  }
+
   function defaultsFromHost(hostname) {
     const h = String(hostname || "").toLowerCase();
     const m = /^([a-z0-9-]+)\.github\.io$/.exec(h);
-    return { owner: m ? m[1] : "", repo: REPO };
+    const owner = m && !isBlocked({ owner: m[1] }) ? m[1] : "";
+    return { owner, repo: REPO };
   }
 
   function contentsUrl(cfg, path) {
+    if (isBlocked(cfg)) throw new Error("vault owner " + cfg.owner + " is not allowed in this app");
     return "https://api.github.com/repos/" + cfg.owner + "/" + cfg.repo + "/contents/" + path;
   }
 
   function isConfigured(cfg) {
-    return !!(cfg && String(cfg.owner || "").trim() && String(cfg.repo || "").trim());
+    return !!(cfg && String(cfg.owner || "").trim() && String(cfg.repo || "").trim()) && !isBlocked(cfg);
   }
 
   // Seed texts for a brand-new vault. Byte-for-byte copies of vault-seed/README.md and
@@ -116,7 +125,7 @@ Full format reference: the app repo's \`docs/DATA-FORMAT.md\`.
     return [{ path: "README.md", text: SEED_README }, { path: "CLAUDE.md", text: SEED_CLAUDE }];
   }
 
-  const api = { defaultsFromHost, contentsUrl, isConfigured, seedFiles };
+  const api = { defaultsFromHost, contentsUrl, isConfigured, isBlocked, seedFiles };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Vault = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -37,3 +37,12 @@ test("seedFiles match the authoritative copies in vault-seed/", () => {
     assert.equal(f.text, disk, f.path + " drifted from vault-seed/");
   }
 });
+
+test("the template author's own vault is never used", () => {
+  assert.deepEqual(V.defaultsFromHost("kcjj0203.github.io"), { owner: "", repo: "expenses-vault" });
+  assert.equal(V.isBlocked({ owner: "KCJJ0203", repo: "expenses-vault" }), true);
+  assert.equal(V.isBlocked({ owner: " kcjj0203 ", repo: "x" }), true);
+  assert.equal(V.isBlocked({ owner: "alice", repo: "expenses-vault" }), false);
+  assert.equal(V.isConfigured({ owner: "KCJJ0203", repo: "expenses-vault" }), false);
+  assert.throws(() => V.contentsUrl({ owner: "KCJJ0203", repo: "expenses-vault" }, "expenses-data.json"), /not allowed/);
+});

@@ -202,3 +202,23 @@ test("sameState sees a valuation change", () => {
   assert.equal(S.sameState(a, b), false);
   assert.equal(S.sameState(a, { ...a }), true);
 });
+
+// ---- audit 1 Nov 2026 ----
+test("merge — two devices posting the same capture keep ONE txn (newest)", () => {
+  const a = base({ txns: [tx("xa", 5, { capId: "cap1" })] });
+  const b = base({ txns: [tx("xb", 7, { capId: "cap1" }), tx("other", 1)] });
+  const m = S.merge(a, b, 10);
+  assert.deepEqual(m.txns.map((t) => t.id).sort(), ["other", "xb"]);
+});
+test("merge — tombstones survive well past 90 days", () => {
+  const day = 86400000, now = 400 * day;
+  const m = S.merge(base({ tombstones: { gone: now - 200 * day } }), base({ txns: [tx("gone", 1)] }), now);
+  assert.equal(m.txns.length, 0);
+  assert.ok("gone" in m.tombstones);
+});
+test("syncOnce — an existing but unreadable vault file is never overwritten", async () => {
+  let pushed = false;
+  await assert.rejects(S.syncOnce({ local: base({ txns: [tx("a", 1)] }), now: 5,
+    pull: async () => ({ data: null, sha: "abc" }), push: async () => { pushed = true; return "x"; } }), /unreadable/);
+  assert.equal(pushed, false);
+});

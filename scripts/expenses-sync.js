@@ -42,6 +42,15 @@
       if (T != null && T >= mt(t)) continue; // stays deleted
       txns.push(t);
     }
+    // 3b. one screenshot capture = one txn. Two devices can each auto-post the same capture under
+    // different ids before its file is deleted; keep the newest (tie -> smaller id), drop the rest.
+    const byCap = {};
+    for (const t of txns) {
+      if (!t.capId) continue;
+      const cur = byCap[t.capId];
+      if (!cur || mt(t) > mt(cur) || (mt(t) === mt(cur) && String(t.id) < String(cur.id))) byCap[t.capId] = t;
+    }
+    for (let i = txns.length - 1; i >= 0; i--) { const t = txns[i]; if (t.capId && byCap[t.capId] !== t) txns.splice(i, 1); }
 
     // 2b/3b. IOUs ("owed" records) — same union-by-id + shared tombstones as txns
     const owedById = {};
@@ -99,7 +108,7 @@
       budgets,
       bills,
       valuations,
-      tombstones: pruneTombstones(tomb, now, 90),
+      tombstones: pruneTombstones(tomb, now, 730), // long: a device offline longer than this would resurrect deletes
       accounts,
       categories: uniq(local.categories, remote.categories),
       tags: uniq(local.tags, remote.tags),
@@ -131,6 +140,8 @@
     let attempt = 0;
     for (;;) {
       const { data: remote, sha } = await pull();
+      // a file that EXISTS (has a sha) but did not parse must never be overwritten with this device's copy
+      if (!remote && sha) throw new Error("vault file unreadable - not overwriting it");
       const merged = merge(local, remote, now);
       if (remote && sameState(merged, remote)) return { merged, sha, pushed: false };
       try {

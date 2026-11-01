@@ -426,6 +426,7 @@ function connectGitHub(){
     dlg.onclose=()=>resolve(false);
     document.getElementById("vdlgS").onclick=()=>{
       const owner=document.getElementById("vOwner").value.trim().replace(/^@/,""), repo=document.getElementById("vRepo").value.trim()||"expenses-vault", tok=document.getElementById("vTok").value.trim();
+      if(Vault.isBlocked({owner})){ alert("That is the app author's own account. Put your own GitHub username here."); return; }
       localStorage.setItem(VAULTKEY, JSON.stringify({owner, repo}));
       if(tok) localStorage.setItem(GHTOKKEY, tok); else localStorage.removeItem(GHTOKKEY);
       dlg.onclose=null; done(!!tok && !!owner);
@@ -567,8 +568,11 @@ async function pullVault(){
   if (r.status === 404) return { data:null, sha:null };
   if (!r.ok) throw new Error("pull HTTP "+r.status);
   const j = await r.json();
+  // >1 MB files come back with empty content; a half-written file won't parse. Either way the file
+  // EXISTS, so fail loudly instead of returning "empty" (that would push this device's copy over it).
+  if (!j.content) throw new Error("vault file too large or unreadable");
   const text = decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))));
-  let data = null; try { data = JSON.parse(text); } catch(_){ data = null; }
+  let data; try { data = JSON.parse(text); } catch(_){ throw new Error("vault file is not valid JSON"); }
   return { data, sha: j.sha };
 }
 
@@ -620,9 +624,10 @@ async function listCaptures() {
 async function deleteCapture(path, sha) {
   const tok = ghToken(); if (!tok || !path || !sha) return;
   const url = `${_vaultBase()}/${path}`;
-  await fetch(url, { method: "DELETE",
+  const r = await fetch(url, { method: "DELETE",
     headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json" },
     body: JSON.stringify({ message: "capture imported", sha, branch: VAULT_BRANCH }) });
+  if (!r.ok && r.status !== 404) throw new Error("delete capture HTTP " + r.status);
 }
 
 let expSyncState = "local"; // local | syncing | ok | pending | error
@@ -1323,9 +1328,13 @@ function expEditBudgets(){
 // account here — no second in-app Create. Only captures we can't resolve an amount for fall
 // through to the manual review inbox. capId dedup + pendingCaptures make this idempotent.
 async function expRefreshCaptures() {
-  let pending;
-  try { pending = ExpensesCapture.pendingCaptures(await listCaptures(), expTxns()).filter((f) => !expDismissed.has(f.id)); }
+  let pending, files;
+  try { files = await listCaptures(); pending = ExpensesCapture.pendingCaptures(files, expTxns()).filter((f) => !expDismissed.has(f.id)); }
   catch (_) { return; }
+  // captures already posted (their capId is on a txn) but whose delete failed earlier: clean them up now
+  const used = new Set(expTxns().map((t) => t && t.capId).filter(Boolean));
+  const leftovers = (files || []).filter((f) => f && used.has(f.id));
+  const toDelete = [];
   const cats = EXP_CFG.categories || [];
   const accts = expAccounts();
   const defAcct = expDefaultAccountId();
@@ -1342,9 +1351,11 @@ async function expRefreshCaptures() {
       const o = { type, amount, item: (c.merchant || d.merchant || ""),
         category, account: defAcct, date: c.date || d.date || iso(new Date()), tags: [], capId: c.id };
       expSaveTxn(o); added.push(o);
-      deleteCapture(c.path, c.sha).catch(() => {});
+      toDelete.push(c);
     } else { review.push(c); }
   }
+  // one at a time: parallel DELETEs on the same branch race each other (409) and used to fail silently
+  (async () => { for (const c of [...toDelete, ...leftovers]) { try { await deleteCapture(c.path, c.sha); } catch (e) { console.warn("capture cleanup:", e.message); } } })();
   const key = (a) => a.map((c) => c.id).sort().join(",");
   const changed = added.length || key(review) !== key(expCaptures);
   expCaptures = review;

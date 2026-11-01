@@ -6,7 +6,9 @@
 
   const KW = /(grand\s*total|subtotal|total|amount|paid|payment|nett?)/i;
   // currency figures: optional $ / S$ / SGD prefix, then a number that HAS 2 decimals.
-  const AMT_G = /(?:S\$|SGD\s*|\$)?\s?(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})/g;
+  // (?<![\d.]) / (?![.\d]) keep a date like 12.10.2026 from reading as $12.10
+  const AMT_G = /(?:S\$|SGD\s*|\$)?\s?(?<![\d.])(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})(?![.\d])/g;
+  const TOTAL = /\b(grand\s*total|total)\b/i, NOT_TOTAL = /sub\s*-?\s*total/i;
 
   const toNum = (s) => Number(String(s).replace(/,/g, ""));
 
@@ -15,9 +17,12 @@
     lines.forEach((line) => {
       AMT_G.lastIndex = 0;
       let m;
-      while ((m = AMT_G.exec(line))) hits.push({ val: toNum(m[1]), kw: KW.test(line) });
+      while ((m = AMT_G.exec(line))) hits.push({ val: toNum(m[1]), kw: KW.test(line), total: TOTAL.test(line) && !NOT_TOTAL.test(line) });
     });
     if (!hits.length) return null;
+    // a receipt's (last) Total line is the amount, not the subtotal, the cash handed over or the change
+    const totals = hits.filter((h) => h.total);
+    if (totals.length) return totals[totals.length - 1].val;
     const kwHits = hits.filter((h) => h.kw);
     const pool = kwHits.length ? kwHits : hits;
     return pool.reduce((a, b) => (b.val > a.val ? b : a)).val;
@@ -25,7 +30,10 @@
 
   const MON = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
   const pad = (n) => String(n).padStart(2, "0");
-  const monNum = (s) => MON[String(s).slice(0, 3).toLowerCase()];
+  // strict: "Jul", "July", "Sept" are months; "Junction" or "Marina" are not
+  const FULL = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const monNum = (s) => { const w = String(s).toLowerCase(); if (w.length === 3 || w === "sept") return MON[w.slice(0, 3)]; const i = FULL.indexOf(w); return i >= 0 ? i + 1 : undefined; };
+  const validYmd = (y, mo, d) => (mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? y + "-" + pad(mo) + "-" + pad(d) : null);
   const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   // A year-less "12 Mar" is resolved to the most recent such date not in the future (so a
   // late-December receipt read in January lands last year, not next year).
@@ -40,19 +48,22 @@
     const ref = now instanceof Date ? now : new Date();
     let m;
     if ((m = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/))) return `${m[1]}-${m[2]}-${m[3]}`;
-    if ((m = text.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/))) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+    if ((m = text.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/))) {
+      const a = Number(m[1]), b = Number(m[2]);   // SG is day/month; a "month" > 12 means it was US month/day
+      const r = b > 12 ? validYmd(m[3], a, b) : validYmd(m[3], b, a); if (r) return r; }
     let mm;
     const reA = /\b(\d{1,2})\s+([A-Za-z]{3,})\.?\s+(\d{4})\b/g;
     while ((mm = reA.exec(text))) if (monNum(mm[2])) return `${mm[3]}-${pad(monNum(mm[2]))}-${pad(mm[1])}`;
     const reB = /\b([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})\b/g;
     while ((mm = reB.exec(text))) if (monNum(mm[1])) return `${mm[3]}-${pad(monNum(mm[1]))}-${pad(mm[2])}`;
-    // --- relative + year-less, resolved against today (receipts/bank screens often use these) ---
-    if (/\btoday\b/i.test(text)) return ymd(ref);
-    if (/\byesterday\b/i.test(text)) { const d = new Date(ref); d.setDate(d.getDate() - 1); return ymd(d); }
-    const reC = /\b(\d{1,2})\s+([A-Za-z]{3,})\.?/g;   // "10 Jul"
+    // --- year-less dates beat "Today"/"Yesterday": a bank screen showing "Yesterday 10 Jul" read a day
+    // later must still land on 10 Jul, while the relative word is only right on the day it was taken ---
+    const reC = /\b(\d{1,2})\s+([A-Za-z]{3,})\b\.?/g;   // "10 Jul"
     while ((mm = reC.exec(text))) { const mo = monNum(mm[2]); if (mo) { const r = resolveNoYear(mo, Number(mm[1]), ref); if (r) return r; } }
     const reD = /\b([A-Za-z]{3,})\.?\s+(\d{1,2})\b/g;  // "Jul 10"
     while ((mm = reD.exec(text))) { const mo = monNum(mm[1]); if (mo) { const r = resolveNoYear(mo, Number(mm[2]), ref); if (r) return r; } }
+    if (/\btoday\b/i.test(text)) return ymd(ref);
+    if (/\byesterday\b/i.test(text)) { const d = new Date(ref); d.setDate(d.getDate() - 1); return ymd(d); }
     return null;
   }
 

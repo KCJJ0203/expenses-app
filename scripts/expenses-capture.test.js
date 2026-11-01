@@ -88,20 +88,42 @@ test("pendingCaptures — handles empty / missing inputs", () => {
 });
 
 const CATS = [{id:"Food"},{id:"Tea/Coffee"},{id:"Transport"},{id:"Groceries"},{id:"Shopping"},{id:"Entertainment"},{id:"School"},{id:"Bills"},{id:"Others"}];
-// a card-transaction OCR (card no. + ref replaced with test values) shaped like KC's Wingstop capture (SGD misread as SOD)
-const WINGSTOP = "10:16 A\n•ll 5G\n69\n<\nSOD 13.30\nYesterday 10 Jul\nDescription\nBAT Wingstop Singapore SG SGP 07JUL\n4111-1111-1111-1111 000000000000000\nTransaction Type\nPoint-of-Sale Transaction\nSHARE";
+// a synthetic card-transaction OCR (test card no., made-up merchant; SGD misread as SOD)
+const CARD_OCR = "9:42 A\n•ll 5G\n71\n<\nSOD 21.75\nYesterday 8 Jul\nDescription\nBAT Pizza Planet Singapore SG SGP 06JUL\n4111-1111-1111-1111 000000000000000\nTransaction Type\nPoint-of-Sale Transaction\nSHARE";
 
-test("suggestCategory — wingstop → Food", () => assert.equal(C.suggestCategory(WINGSTOP, CATS), "Food"));
+test("suggestCategory — pizza place → Food", () => assert.equal(C.suggestCategory(CARD_OCR, CATS), "Food"));
 test("suggestCategory — cafe chain → Tea/Coffee (beats Food)", () => assert.equal(C.suggestCategory("STARBUCKS COFFEE @ VivoCity", CATS), "Tea/Coffee"));
 test("suggestCategory — grab → Transport", () => assert.equal(C.suggestCategory("GRAB* RIDE 10 JUL", CATS), "Transport"));
 test("suggestCategory — no keyword → null", () => assert.equal(C.suggestCategory("random blob 12.00", CATS), null));
 test("suggestCategory — only returns a category that exists in the list", () => assert.equal(C.suggestCategory("grab ride", [{id:"Food"}]), null));
-test("guessMerchant — strips bank/country/date noise", () => assert.equal(C.guessMerchant(WINGSTOP, CATS), "Wingstop Singapore"));
+test("guessMerchant — strips bank/country/date noise", () => assert.equal(C.guessMerchant(CARD_OCR, CATS), "Pizza Planet Singapore"));
 test("guessMerchant — falls back to description when no keyword", () => assert.equal(typeof C.guessMerchant("Some Shop\n5.00", CATS), "string"));
-test("describeCapture — full Wingstop parse", () => {
-  const d = C.describeCapture(WINGSTOP, CATS, NOW);
-  assert.equal(d.amount, 13.30);
+test("describeCapture — full card-screen parse", () => {
+  const d = C.describeCapture(CARD_OCR, CATS, NOW);
+  assert.equal(d.amount, 21.75);
   assert.equal(d.categoryId, "Food");
-  assert.equal(d.merchant, "Wingstop Singapore");
-  assert.equal(d.date, "2026-07-10");   // "Yesterday 10 Jul" → 2026-07-10
+  assert.equal(d.merchant, "Pizza Planet Singapore");
+  assert.equal(d.date, "2026-07-08");   // "Yesterday 8 Jul" → 2026-07-08
+});
+
+// ---- audit 1 Nov 2026 ----
+const NOV1 = new Date(2026, 10, 1, 12);
+test("amount — the Total line beats subtotal, cash paid and change", () => {
+  assert.equal(C.parseCapture("Subtotal 20.00\nDiscount 5.00\nTotal 15.00").amount, 15);
+  assert.equal(C.parseCapture("Total 12.50\nAmount Paid 20.00\nChange 7.50").amount, 12.5);
+});
+test("amount — a dotted date is not money", () => {
+  assert.equal(C.parseCapture("12.10.2026\nlunch").amount, null);
+});
+test("date — US month/day is recognised, impossible dates rejected", () => {
+  assert.equal(C.parseCapture("10/31/2026", NOV1).date, "2026-10-31");
+  assert.equal(C.parseCapture("31/10/2026", NOV1).date, "2026-10-31");
+  assert.equal(C.parseCapture("40/40/2026", NOV1).date, null);
+});
+test("date — a place name is not a month", () => {
+  assert.equal(C.parseCapture("Junction 8 kopi", NOV1).date, null);
+});
+test("date — 'Yesterday 10 Jul' read months later still lands on 10 Jul", () => {
+  assert.equal(C.parseCapture("Yesterday 10 Jul\n3.80", NOV1).date, "2026-07-10");
+  assert.equal(C.parseCapture("Yesterday\n3.80", NOV1).date, "2026-10-31");
 });
