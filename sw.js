@@ -1,7 +1,7 @@
 // Service worker for Expenses.
 // Strategy: network-first for the HTML shell + scripts + expenses.json (fresh when online, last-good
 // when offline); cache-first for static assets. Bump VERSION to force a cache refresh on the next visit.
-const VERSION = "ex-v3";
+const VERSION = "ex-v4";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon.svg", "./icon-180.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png",
   // Every <script src> in index.html MUST be listed here: the page calls into them at parse time,
   // so one uncached script offline breaks the whole app, not just its own feature.
@@ -23,7 +23,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k.startsWith("ex-") && k !== VERSION).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
